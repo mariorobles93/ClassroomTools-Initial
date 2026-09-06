@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Random Group Generator</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f6f8;
+      color: #222;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.08);
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin: 16px 0 8px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 280px;
+      padding: 12px;
+      border: 1px solid #ccd2d8;
+      border-radius: 8px;
+      font: inherit;
+      line-height: 1.5;
+      resize: vertical;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    input[type="number"] {
+      width: 90px;
+      padding: 9px;
+      font: inherit;
+      border: 1px solid #ccd2d8;
+      border-radius: 6px;
+    }
+
+    button {
+      padding: 10px 18px;
+      border: 0;
+      border-radius: 7px;
+      background: #2563eb;
+      color: white;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    #result {
+      margin-top: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      gap: 16px;
+    }
+
+    .group {
+      margin-bottom: 16px;
+      padding: 16px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      width: 25%;
+    }
+
+    .group-title {
+      margin: 0 0 8px;
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    .group-member {
+      line-height: 1.6;
+    }
+
+    .status {
+      margin-top: 8px;
+      color: #666;
+      font-size: .9rem;
+    }
+
+    .summary {
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>Random Group Generator</h1>
+
+  <form id="groupForm">
+
+    <label for="items">
+      Items
+    </label>
+
+    <textarea
+      id="items"
+      placeholder="Paste your items here, one per line..."
+      spellcheck="false"
+    ></textarea>
+
+    <div class="status" id="status">
+      Numbers are automatically removed.
+    </div>
+
+    <div class="controls">
+
+      <label for="groupSize" style="margin: 0;">
+        Group size
+      </label>
+
+      <input
+        id="groupSize"
+        type="number"
+        min="1"
+        value="3"
+      >
+
+      <button type="submit">
+        Randomize
+      </button>
+
+    </div>
+
+  </form>
+
+  <div id="summary"></div>
+  <div id="result"></div>
+
+</div>
+
+<script>
+(() => {
+
+  const textarea = document.getElementById("items");
+  const form = document.getElementById("groupForm");
+  const groupSizeInput = document.getElementById("groupSize");
+  const result = document.getElementById("result");
+  const summary = document.getElementById("summary");
+  const status = document.getElementById("status");
+
+
+  /*
+   * Remove all numeric characters from text.
+   */
+  function removeNumbers(text) {
+    return text.replace(/[0-9]/g, "");
+  }
+
+
+  /*
+   * Normalize text:
+   *
+   * - Removes numbers.
+   * - Converts CRLF/CR to LF.
+   * - Removes blank lines.
+   * - Trims whitespace around each line.
+   */
+  function normalizeText(text) {
+
+    text = removeNumbers(text);
+
+    // Normalize newline types.
+    text = text.replace(/\r\n?/g, "\n");
+
+    // Clean each line and remove empty lines.
+    const lines = text
+      .split("\n")
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+
+    return lines.join("\n");
+  }
+
+
+  /*
+   * Remove numbers whenever the user types.
+   */
+  textarea.addEventListener("input", () => {
+
+    const cursor = textarea.selectionStart;
+    const before = textarea.value;
+    const after = removeNumbers(before);
+
+    if (before !== after) {
+
+      const removedBeforeCursor =
+        (before.slice(0, cursor).match(/[0-9]/g) || []).length;
+
+      textarea.value = after;
+
+      const newCursor =
+        Math.max(0, cursor - removedBeforeCursor);
+
+      textarea.setSelectionRange(
+        newCursor,
+        newCursor
+      );
+    }
+
+    updateStatus();
+  });
+
+
+  /*
+   * Normalize pasted text before inserting it.
+   */
+  textarea.addEventListener("paste", event => {
+
+    event.preventDefault();
+
+    const pastedText =
+      event.clipboardData.getData("text/plain");
+
+    const cleaned =
+      normalizeText(pastedText);
+
+    const start =
+      textarea.selectionStart;
+
+    const end =
+      textarea.selectionEnd;
+
+    const current =
+      textarea.value;
+
+    textarea.value =
+      current.slice(0, start) +
+      cleaned +
+      current.slice(end);
+
+    const cursor =
+      start + cleaned.length;
+
+    textarea.setSelectionRange(
+      cursor,
+      cursor
+    );
+
+    textarea.dispatchEvent(
+      new Event("input", {
+        bubbles: true
+      })
+    );
+
+  });
+
+
+  /*
+   * Get all items.
+   */
+  function getItems() {
+
+    return normalizeText(textarea.value)
+      .split("\n")
+      .filter(Boolean);
+
+  }
+
+
+  /*
+   * Update item count.
+   */
+  function updateStatus() {
+
+    const count =
+      getItems().length;
+
+    status.textContent =
+      `${count} item${count === 1 ? "" : "s"} loaded.`;
+
+  }
+
+
+  /*
+   * Fisher-Yates shuffle.
+   */
+  function shuffle(array) {
+
+    const copy = [...array];
+
+    for (
+      let i = copy.length - 1;
+      i > 0;
+      i--
+    ) {
+
+      const j =
+        Math.floor(Math.random() * (i + 1));
+
+      [copy[i], copy[j]] =
+        [copy[j], copy[i]];
+
+    }
+
+    return copy;
+
+  }
+
+
+  /*
+   * Divide all randomized items into groups.
+   *
+   * Example:
+   *
+   * 10 items
+   * Group size = 3
+   *
+   * Group 1 = 3
+   * Group 2 = 3
+   * Group 3 = 3
+   * Group 4 = 1
+   */
+  function createGroups(items, groupSize) {
+
+    const groups = [];
+
+    for (
+      let i = 0;
+      i < items.length;
+      i += groupSize
+    ) {
+
+      groups.push(
+        items.slice(i, i + groupSize)
+      );
+
+    }
+
+    return groups;
+
+  }
+
+
+  /*
+   * Randomize all items and display
+   * every resulting group.
+   */
+  form.addEventListener("submit", event => {
+
+    event.preventDefault();
+
+    const items =
+      getItems();
+
+    const groupSize =
+      parseInt(
+        groupSizeInput.value,
+        10
+      );
+
+
+    /*
+     * Validate items.
+     */
+    if (!items.length) {
+
+      result.innerHTML =
+        `<div class="group">
+          Please enter or paste some items first.
+        </div>`;
+
+      return;
+    }
+
+
+    /*
+     * Validate group size.
+     */
+    if (
+      !Number.isInteger(groupSize) ||
+      groupSize < 1
+    ) {
+
+      result.innerHTML =
+        `<div class="group">
+          Please enter a valid group size.
+        </div>`;
+
+      return;
+    }
+
+
+    /*
+     * Randomize every item.
+     */
+    const randomizedItems =
+      shuffle(items);
+
+
+    /*
+     * Divide all randomized items
+     * into groups.
+     */
+    const groups =
+      createGroups(
+        randomizedItems,
+        groupSize
+      );
+
+
+    /*
+     * Create the output.
+     */
+    result.innerHTML = "";
+
+
+    /*
+     * Summary.
+     */
+
+    const summaryText =
+      document.createElement("div");
+
+    summaryText.className =
+      "summary";
+
+    summaryText.textContent =
+      `${items.length} items randomized into ${groups.length} group${groups.length === 1 ? "" : "s"}.`;
+
+    summary.appendChild(summaryText);
+
+
+    /*
+     * Display every group.
+     */
+    groups.forEach((group, groupIndex) => {
+
+      const groupElement =
+        document.createElement("div");
+
+      groupElement.className =
+        "group";
+
+
+      const title =
+        document.createElement("div");
+
+      title.className =
+        "group-title";
+
+      title.textContent =
+        `Group ${groupIndex + 1} (${group.length})`;
+
+      groupElement.appendChild(title);
+
+
+      /*
+       * Add each member.
+       */
+      group.forEach((item, itemIndex) => {
+
+        const member =
+          document.createElement("div");
+
+        member.className =
+          "group-member";
+
+        member.textContent =
+          `${itemIndex + 1}. ${item}`;
+
+        groupElement.appendChild(member);
+
+      });
+
+
+      result.appendChild(groupElement);
+
+    });
+
+  });
+
+
+  /*
+   * Initial status.
+   */
+  updateStatus();
+
+})();
+</script>
+
+</body>
+</html>
