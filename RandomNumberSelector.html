@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Random Number Selector</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f6f8;
+      color: #1f2937;
+    }
+
+    .container {
+      width: min(100% - 32px, 900px);
+      margin: 40px auto;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #6b7280;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-weight: 600;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    input[type="number"]:focus {
+      outline: 2px solid #2563eb;
+      border-color: transparent;
+    }
+
+    .options {
+      margin-top: 20px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .checkbox {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .checkbox input {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .primary {
+      background: #2563eb;
+      color: white;
+      flex: 1;
+    }
+
+    .secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .result {
+      text-align: center;
+      padding: 30px 10px;
+    }
+
+    .result-label {
+      color: #6b7280;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .number {
+      font-size: clamp(60px, 12vw, 110px);
+      font-weight: 800;
+      line-height: 1;
+      margin: 15px 0;
+      color: #2563eb;
+    }
+
+    .message {
+      color: #6b7280;
+    }
+
+    .history {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    .history-number {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-weight: 600;
+    }
+
+    .empty {
+      color: #9ca3af;
+      font-style: italic;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 15px;
+    }
+
+    .stat {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .stat-label {
+      color: #6b7280;
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .frequency {
+      margin-top: 20px;
+    }
+
+    .frequency-row {
+      display: grid;
+      grid-template-columns: 60px 1fr 50px;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .bar-container {
+      height: 20px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .bar {
+      height: 100%;
+      background: #2563eb;
+      min-width: 2px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .warning {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #fef3c7;
+      color: #92400e;
+      display: none;
+    }
+
+    @media (max-width: 650px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .buttons {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>Random Number Selector</h1>
+  <div class="subtitle">
+    Select a range and randomly draw one number at a time.
+  </div>
+
+  <!-- Controls -->
+  <div class="card">
+
+    <div class="form-grid">
+
+      <div class="field">
+        <label for="minNumber">Minimum Number</label>
+        <input
+          type="number"
+          id="minNumber"
+          value="1"
+          step="1"
+        >
+      </div>
+
+      <div class="field">
+        <label for="maxNumber">Maximum Number</label>
+        <input
+          type="number"
+          id="maxNumber"
+          value="100"
+          step="1"
+        >
+      </div>
+
+    </div>
+
+    <div class="options">
+
+      <label class="checkbox">
+        <input type="checkbox" id="excludeSelected">
+        Exclude randomly selected numbers from future draws
+      </label>
+
+      <label class="checkbox">
+        <input type="checkbox" id="showSelected" checked>
+        Display randomly selected numbers
+      </label>
+
+      <label class="checkbox">
+        <input type="checkbox" id="showStatistics" checked>
+        Display statistics about selected numbers
+      </label>
+
+    </div>
+
+    <div id="warning" class="warning"></div>
+
+    <div class="buttons">
+      <button class="primary" id="drawButton">
+        Choose Random Number
+      </button>
+
+      <button class="secondary" id="resetButton">
+        Reset
+      </button>
+    </div>
+
+  </div>
+
+
+  <!-- Current Result -->
+  <div class="card" id="resultCard">
+
+    <div class="result">
+
+      <div class="result-label">
+        Selected Number
+      </div>
+
+      <div class="number" id="currentNumber">
+        —
+      </div>
+
+      <div class="message" id="resultMessage">
+        Press the button to select a number.
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- Selected Numbers -->
+  <div class="card" id="historyCard">
+
+    <h2>Selected Numbers</h2>
+
+    <div id="history" class="history">
+      <span class="empty">No numbers selected yet.</span>
+    </div>
+
+  </div>
+
+
+  <!-- Statistics -->
+  <div class="card" id="statisticsCard">
+
+    <h2>Statistics</h2>
+
+    <div class="stats-grid">
+
+      <div class="stat">
+        <div class="stat-label">Total Draws</div>
+        <div class="stat-value" id="totalDraws">0</div>
+      </div>
+
+      <div class="stat">
+        <div class="stat-label">Unique Numbers</div>
+        <div class="stat-value" id="uniqueNumbers">0</div>
+      </div>
+
+      <div class="stat">
+        <div class="stat-label">Minimum</div>
+        <div class="stat-value" id="statMin">—</div>
+      </div>
+
+      <div class="stat">
+        <div class="stat-label">Maximum</div>
+        <div class="stat-value" id="statMax">—</div>
+      </div>
+
+      <div class="stat">
+        <div class="stat-label">Average</div>
+        <div class="stat-value" id="average">—</div>
+      </div>
+
+      <div class="stat">
+        <div class="stat-label">Median</div>
+        <div class="stat-value" id="median">—</div>
+      </div>
+
+      <div class="stat">
+        <div class="stat-label">Mode</div>
+        <div class="stat-value" id="mode">—</div>
+      </div>
+
+      <div class="stat">
+        <div class="stat-label">Remaining</div>
+        <div class="stat-value" id="remaining">—</div>
+      </div>
+
+    </div>
+
+    <div class="frequency">
+
+      <h3>Number Frequency</h3>
+
+      <div id="frequencyList">
+        <span class="empty">No data yet.</span>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+  const minInput = document.getElementById("minNumber");
+  const maxInput = document.getElementById("maxNumber");
+
+  const excludeSelected = document.getElementById("excludeSelected");
+  const showSelected = document.getElementById("showSelected");
+  const showStatistics = document.getElementById("showStatistics");
+
+  const drawButton = document.getElementById("drawButton");
+  const resetButton = document.getElementById("resetButton");
+
+  const currentNumber = document.getElementById("currentNumber");
+  const resultMessage = document.getElementById("resultMessage");
+
+  const historyCard = document.getElementById("historyCard");
+  const historyElement = document.getElementById("history");
+
+  const statisticsCard = document.getElementById("statisticsCard");
+  const warning = document.getElementById("warning");
+
+  const totalDraws = document.getElementById("totalDraws");
+  const uniqueNumbers = document.getElementById("uniqueNumbers");
+  const statMin = document.getElementById("statMin");
+  const statMax = document.getElementById("statMax");
+  const average = document.getElementById("average");
+  const median = document.getElementById("median");
+  const mode = document.getElementById("mode");
+  const remaining = document.getElementById("remaining");
+  const frequencyList = document.getElementById("frequencyList");
+
+
+  let selectedNumbers = [];
+
+
+  function getRange() {
+    const min = Number(minInput.value);
+    const max = Number(maxInput.value);
+
+    return { min, max };
+  }
+
+
+  function validateRange() {
+    const { min, max } = getRange();
+
+    warning.style.display = "none";
+    warning.textContent = "";
+
+    if (
+      !Number.isInteger(min) ||
+      !Number.isInteger(max)
+    ) {
+      warning.textContent =
+        "Please enter whole numbers for the minimum and maximum.";
+      warning.style.display = "block";
+      return false;
+    }
+
+    if (min > max) {
+      warning.textContent =
+        "The minimum number cannot be greater than the maximum number.";
+      warning.style.display = "block";
+      return false;
+    }
+
+    const rangeSize = max - min + 1;
+
+    if (
+      excludeSelected.checked &&
+      selectedNumbers.length >= rangeSize
+    ) {
+      warning.textContent =
+        "All numbers in the selected range have already been drawn.";
+      warning.style.display = "block";
+      return false;
+    }
+
+    return true;
+  }
+
+
+  function getAvailableNumbers() {
+    const { min, max } = getRange();
+
+    const numbers = [];
+
+    for (let i = min; i <= max; i++) {
+      if (
+        !excludeSelected.checked ||
+        !selectedNumbers.includes(i)
+      ) {
+        numbers.push(i);
+      }
+    }
+
+    return numbers;
+  }
+
+
+  function getRandomNumber(numbers) {
+    const index = Math.floor(Math.random() * numbers.length);
+    return numbers[index];
+  }
+
+
+  function drawNumber() {
+
+    if (!validateRange()) {
+      return;
+    }
+
+    const availableNumbers = getAvailableNumbers();
+
+    if (availableNumbers.length === 0) {
+      warning.textContent =
+        "There are no numbers available to select.";
+      warning.style.display = "block";
+      return;
+    }
+
+    const number = getRandomNumber(availableNumbers);
+
+    selectedNumbers.push(number);
+
+    currentNumber.textContent = number;
+
+    resultMessage.textContent =
+      `Draw ${selectedNumbers.length}`;
+
+    updateHistory();
+    updateStatistics();
+  }
+
+
+  function updateHistory() {
+
+    if (!showSelected.checked) {
+      historyCard.classList.add("hidden");
+      return;
+    }
+
+    historyCard.classList.remove("hidden");
+
+    historyElement.innerHTML = "";
+
+    if (selectedNumbers.length === 0) {
+      historyElement.innerHTML =
+        '<span class="empty">No numbers selected yet.</span>';
+      return;
+    }
+
+    selectedNumbers.forEach((number, index) => {
+
+      const element = document.createElement("span");
+
+      element.className = "history-number";
+
+      element.textContent =
+        `${index + 1}: ${number}`;
+
+      historyElement.appendChild(element);
+    });
+  }
+
+
+  function calculateMedian(numbers) {
+
+    const sorted = [...numbers].sort((a, b) => a - b);
+
+    const middle = Math.floor(sorted.length / 2);
+
+    if (sorted.length % 2 === 0) {
+      return (sorted[middle - 1] + sorted[middle]) / 2;
+    }
+
+    return sorted[middle];
+  }
+
+
+  function calculateMode(numbers) {
+
+    if (numbers.length === 0) {
+      return null;
+    }
+
+    const frequencies = {};
+
+    numbers.forEach(number => {
+      frequencies[number] =
+        (frequencies[number] || 0) + 1;
+    });
+
+    const maxFrequency =
+      Math.max(...Object.values(frequencies));
+
+    if (maxFrequency === 1) {
+      return "None";
+    }
+
+    const modes = Object.keys(frequencies)
+      .filter(number =>
+        frequencies[number] === maxFrequency
+      )
+      .map(Number);
+
+    return modes.join(", ");
+  }
+
+
+  function updateStatistics() {
+
+    if (!showStatistics.checked) {
+      statisticsCard.classList.add("hidden");
+      return;
+    }
+
+    statisticsCard.classList.remove("hidden");
+
+    const numbers = selectedNumbers;
+
+    totalDraws.textContent = numbers.length;
+
+    uniqueNumbers.textContent =
+      new Set(numbers).size;
+
+    if (numbers.length === 0) {
+
+      statMin.textContent = "—";
+      statMax.textContent = "—";
+      average.textContent = "—";
+      median.textContent = "—";
+      mode.textContent = "—";
+      frequencyList.innerHTML =
+        '<span class="empty">No data yet.</span>';
+
+    } else {
+
+      const min = Math.min(...numbers);
+      const max = Math.max(...numbers);
+
+      const sum =
+        numbers.reduce((total, value) =>
+          total + value, 0);
+
+      const avg =
+        sum / numbers.length;
+
+      statMin.textContent = min;
+      statMax.textContent = max;
+      average.textContent = avg.toFixed(2);
+      median.textContent = calculateMedian(numbers);
+      mode.textContent = calculateMode(numbers);
+
+      updateFrequency(numbers);
+    }
+
+    updateRemaining();
+  }
+
+
+  function updateRemaining() {
+
+    const { min, max } = getRange();
+
+    if (
+      !Number.isInteger(min) ||
+      !Number.isInteger(max) ||
+      min > max
+    ) {
+      remaining.textContent = "—";
+      return;
+    }
+
+    const rangeSize = max - min + 1;
+
+    if (excludeSelected.checked) {
+
+      const remainingCount =
+        rangeSize -
+        selectedNumbers.filter(n =>
+          n >= min && n <= max
+        ).length;
+
+      remaining.textContent =
+        Math.max(0, remainingCount);
+
+    } else {
+
+      remaining.textContent =
+        rangeSize;
+    }
+  }
+
+
+  function updateFrequency(numbers) {
+
+    const frequencies = {};
+
+    numbers.forEach(number => {
+      frequencies[number] =
+        (frequencies[number] || 0) + 1;
+    });
+
+    const entries =
+      Object.entries(frequencies)
+        .map(([number, count]) => ({
+          number: Number(number),
+          count
+        }))
+        .sort((a, b) => a.number - b.number);
+
+    const maxFrequency =
+      Math.max(...entries.map(item => item.count));
+
+    frequencyList.innerHTML = "";
+
+    entries.forEach(item => {
+
+      const row =
+        document.createElement("div");
+
+      row.className = "frequency-row";
+
+      const number =
+        document.createElement("strong");
+
+      number.textContent = item.number;
+
+      const barContainer =
+        document.createElement("div");
+
+      barContainer.className =
+        "bar-container";
+
+      const bar =
+        document.createElement("div");
+
+      bar.className = "bar";
+
+      bar.style.width =
+        `${(item.count / maxFrequency) * 100}%`;
+
+      barContainer.appendChild(bar);
+
+      const count =
+        document.createElement("span");
+
+      count.textContent =
+        item.count;
+
+      row.appendChild(number);
+      row.appendChild(barContainer);
+      row.appendChild(count);
+
+      frequencyList.appendChild(row);
+    });
+  }
+
+
+  function reset() {
+
+    selectedNumbers = [];
+
+    currentNumber.textContent = "—";
+
+    resultMessage.textContent =
+      "Press the button to select a number.";
+
+    warning.style.display = "none";
+
+    updateHistory();
+    updateStatistics();
+  }
+
+
+  drawButton.addEventListener("click", drawNumber);
+
+  resetButton.addEventListener("click", reset);
+
+
+  showSelected.addEventListener("change", updateHistory);
+
+  showStatistics.addEventListener(
+    "change",
+    updateStatistics
+  );
+
+
+  excludeSelected.addEventListener(
+    "change",
+    () => {
+
+      updateStatistics();
+
+      validateRange();
+    }
+  );
+
+
+  minInput.addEventListener(
+    "change",
+    updateStatistics
+  );
+
+  maxInput.addEventListener(
+    "change",
+    updateStatistics
+  );
+
+
+  // Allow Enter to perform a draw.
+  document.addEventListener("keydown", event => {
+
+    if (
+      event.key === "Enter" &&
+      document.activeElement.tagName !== "BUTTON"
+    ) {
+      drawNumber();
+    }
+
+  });
+
+
+  // Initial state
+  updateHistory();
+  updateStatistics();
+
+</script>
+
+</body>
+</html>
