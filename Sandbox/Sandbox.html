@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Spacer</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #f4f6f8;
+        color: #222;
+    }
+
+    .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 30px 20px;
+    }
+
+    h1 {
+        margin-bottom: 5px;
+    }
+
+    .subtitle {
+        color: #666;
+        margin-top: 0;
+        margin-bottom: 25px;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .panel {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+
+    label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+
+    textarea {
+        width: 100%;
+        min-height: 350px;
+        resize: vertical;
+        padding: 14px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 16px;
+        line-height: 1.6;
+    }
+
+    textarea:focus {
+        outline: none;
+        border-color: #666;
+    }
+
+    .controls {
+        margin-top: 15px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    button {
+        border: none;
+        border-radius: 6px;
+        padding: 10px 16px;
+        font-size: 14px;
+        cursor: pointer;
+        background: #333;
+        color: white;
+    }
+
+    button:hover {
+        background: #111;
+    }
+
+    button.secondary {
+        background: #777;
+    }
+
+    button.secondary:hover {
+        background: #555;
+    }
+
+    .stats {
+        margin-top: 15px;
+        padding: 12px;
+        background: #f1f3f5;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .changes {
+        margin-top: 20px;
+    }
+
+    .change {
+        padding: 10px;
+        margin-bottom: 8px;
+        background: #f8f8f8;
+        border-left: 4px solid #555;
+        border-radius: 4px;
+        font-family: monospace;
+    }
+
+    .old {
+        color: #a00;
+    }
+
+    .new {
+        color: #070;
+        font-weight: bold;
+    }
+
+    .settings {
+        margin-top: 20px;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+
+    .setting {
+        margin-bottom: 12px;
+    }
+
+    .setting:last-child {
+        margin-bottom: 0;
+    }
+
+    input[type="number"] {
+        width: 80px;
+        padding: 7px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+
+    input[type="checkbox"] {
+        margin-right: 8px;
+    }
+
+    @media (max-width: 800px) {
+        .grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Word Spacer</h1>
+    <p class="subtitle">
+        Detect words that have been accidentally packed together and insert missing spaces.
+    </p>
+
+    <div class="grid">
+
+        <div class="panel">
+            <label for="inputText">Original Text</label>
+
+            <textarea
+                id="inputText"
+                placeholder="Paste text here...
+
+Example:
+Thisisatestofwordstogether.
+Thequickbrownfoxjumpsoverthelazydog."
+            ></textarea>
+
+            <div class="controls">
+                <button onclick="processText()">Fix Text</button>
+                <button class="secondary" onclick="clearAll()">Clear</button>
+                <button class="secondary" onclick="loadExample()">Example</button>
+            </div>
+        </div>
+
+        <div class="panel">
+
+            <label for="outputText">Corrected Text</label>
+
+            <textarea
+                id="outputText"
+                readonly
+                placeholder="Corrected text will appear here..."
+            ></textarea>
+
+            <div class="controls">
+                <button onclick="copyOutput()">Copy Result</button>
+            </div>
+
+            <div class="stats">
+                <strong>Changes:</strong>
+                <span id="changeCount">0</span>
+                <br>
+                <strong>Words processed:</strong>
+                <span id="wordCount">0</span>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="settings">
+
+        <div class="setting">
+            <label>
+                <input type="checkbox" id="preserveCase" checked>
+                Preserve capitalization
+            </label>
+        </div>
+
+        <div class="setting">
+            <label>
+                Minimum word length:
+                <input
+                    type="number"
+                    id="minWordLength"
+                    value="2"
+                    min="1"
+                    max="10"
+                >
+            </label>
+        </div>
+
+    </div>
+
+    <div class="panel changes">
+
+        <h2>Detected Changes</h2>
+
+        <div id="changesList">
+            No changes detected.
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+/*
+=========================================================
+    WORD LIST
+=========================================================
+
+A practical built-in dictionary.
+
+For a larger application this could be replaced with:
+    - a much larger dictionary
+    - a Hunspell dictionary
+    - a language model
+    - an external API
+
+The application is intentionally standalone.
+*/
+
+const WORDS = new Set(`
+a able about above accept across act action actually add after again against age ago air all allow almost along already also always am among an and animal another answer any anyone anything appear apply are area around as ask at away back bad be because become been before began begin behind being believe below between big book both boy bring brought build business but buy by call called came can cannot car care carry case change child children city class clear close come common company complete could country course cut day did different do does done down during each early earth east easy eat end enough even ever every example eye face fact family far fast father few find first five follow for form found four from full game gave general get girl give go good got great group grow had half hand happen hard has have he head hear help her here high him his history home hope house how however human idea if important in in fact into is it its itself job just keep kind know land large last late later laugh law lead learn least leave left less let life light like likely line little live long look lot love low made make man many may me mean men might mile mind minute miss more morning most mother move much must my name near need never new next night no not nothing now number of off often old on once one only open or other our out over own page part people per person place plan play point possible power present problem put question quick quite read real really right room run said same saw say school second see seem seen several she should show side since small so some something sometimes soon sound south space speak special start state stay still story such take taken talk than thank that the their them then there these they thing think third this those though three through time to today together too took top toward town tree try two under until up us use used very want was water way we well went were what when where which while who whole why will with without woman word work world would write year yes yet you your yours
+`.trim().split(/\s+/));
+
+
+/*
+=========================================================
+    ADDITIONAL COMMON WORDS
+=========================================================
+*/
+
+const EXTRA_WORDS = `
+the quick brown fox jumps over lazy dog
+test testing text word words together
+hello world sample example sentence sentences
+javascript html css application computer engineering
+design development software hardware technology
+student students teacher teachers classroom education
+measurement measurements random statistics correct incorrect
+input output result results information data
+thisis atest wordstogether
+`;
+
+EXTRA_WORDS.trim()
+    .split(/\s+/)
+    .forEach(word => WORDS.add(word.toLowerCase()));
+
+
+/*
+=========================================================
+    DICTIONARY LOOKUP
+=========================================================
+*/
+
+function isWord(word) {
+    return WORDS.has(word.toLowerCase());
+}
+
+
+/*
+=========================================================
+    FIND BEST SEGMENTATION
+=========================================================
+
+Uses dynamic programming.
+
+Example:
+
+    thisisatest
+
+Possible:
+    this is a test
+    this is at est
+    thi sis a test
+
+The algorithm scores known words and favors
+longer/common-looking words.
+*/
+
+function segmentWord(text, minLength = 2) {
+
+    const original = text;
+    const lower = text.toLowerCase();
+
+    if (lower.length < minLength * 2) {
+        return original;
+    }
+
+    const n = lower.length;
+
+    const best = new Array(n + 1).fill(null);
+
+    best[0] = {
+        score: 0,
+        parts: []
+    };
+
+    for (let i = 0; i < n; i++) {
+
+        if (!best[i]) continue;
+
+        for (let j = i + minLength; j <= n; j++) {
+
+            const candidate = lower.substring(i, j);
+
+            if (!isWord(candidate)) {
+                continue;
+            }
+
+            /*
+            Favor longer words.
+
+            Longer known words are generally more
+            meaningful than many tiny words.
+            */
+
+            let score = candidate.length * candidate.length;
+
+            /*
+            Slight bonus for common short words.
+            */
+
+            if (
+                candidate === "a" ||
+                candidate === "i" ||
+                candidate === "an" ||
+                candidate === "to" ||
+                candidate === "of" ||
+                candidate === "in" ||
+                candidate === "on" ||
+                candidate === "is" ||
+                candidate === "it"
+            ) {
+                score += 3;
+            }
+
+            const totalScore = best[i].score + score;
+
+            if (
+                !best[j] ||
+                totalScore > best[j].score
+            ) {
+                best[j] = {
+                    score: totalScore,
+                    parts: [
+                        ...best[i].parts,
+                        candidate
+                    ]
+                };
+            }
+        }
+    }
+
+    if (!best[n] || best[n].parts.length <= 1) {
+        return original;
+    }
+
+    /*
+    Only modify the word if the segmentation
+    actually produces multiple words.
+    */
+
+    let result = best[n].parts.join(" ");
+
+    /*
+    Restore capitalization from the original text.
+    */
+
+    if (/^[A-Z]/.test(original)) {
+        result =
+            result.charAt(0).toUpperCase() +
+            result.slice(1);
+    }
+
+    return result;
+}
+
+
+/*
+=========================================================
+    PROCESS A SINGLE TOKEN
+=========================================================
+*/
+
+function processToken(token, minLength) {
+
+    /*
+    Don't process numbers.
+    */
+
+    if (/^\d+$/.test(token)) {
+        return {
+            text: token,
+            changed: false
+        };
+    }
+
+    /*
+    Don't process very short tokens.
+    */
+
+    if (token.length < minLength * 2) {
+        return {
+            text: token,
+            changed: false
+        };
+    }
+
+    /*
+    Strip punctuation temporarily.
+    */
+
+    const match = token.match(/^([^A-Za-z]*)([A-Za-z]+)([^A-Za-z]*)$/);
+
+    if (!match) {
+        return {
+            text: token,
+            changed: false
+        };
+    }
+
+    const prefix = match[1];
+    const word = match[2];
+    const suffix = match[3];
+
+    const result = segmentWord(word, minLength);
+
+    if (result === word) {
+        return {
+            text: token,
+            changed: false
+        };
+    }
+
+    return {
+        text: prefix + result + suffix,
+        changed: true,
+        original: token,
+        replacement: prefix + result + suffix
+    };
+}
+
+
+/*
+=========================================================
+    PROCESS COMPLETE TEXT
+=========================================================
+*/
+
+function processText() {
+
+    const input = document.getElementById("inputText").value;
+
+    const minLength =
+        parseInt(
+            document.getElementById("minWordLength").value
+        ) || 2;
+
+    if (!input.trim()) {
+        document.getElementById("outputText").value = "";
+        document.getElementById("changeCount").textContent = "0";
+        document.getElementById("wordCount").textContent = "0";
+        document.getElementById("changesList").innerHTML =
+            "No changes detected.";
+        return;
+    }
+
+    /*
+    Split while preserving whitespace.
+    */
+
+    const tokens = input.split(/(\s+)/);
+
+    let changes = [];
+    let wordCount = 0;
+
+    const output = tokens.map(token => {
+
+        if (/^\s+$/.test(token)) {
+            return token;
+        }
+
+        wordCount++;
+
+        const result =
+            processToken(token, minLength);
+
+        if (result.changed) {
+            changes.push({
+                original: result.original,
+                replacement: result.replacement
+            });
+        }
+
+        return result.text;
+
+    }).join("");
+
+    document.getElementById("outputText").value = output;
+
+    document.getElementById("changeCount").textContent =
+        changes.length;
+
+    document.getElementById("wordCount").textContent =
+        wordCount;
+
+    displayChanges(changes);
+}
+
+
+/*
+=========================================================
+    DISPLAY CHANGES
+=========================================================
+*/
+
+function displayChanges(changes) {
+
+    const container =
+        document.getElementById("changesList");
+
+    if (changes.length === 0) {
+        container.innerHTML =
+            "No packed words detected.";
+        return;
+    }
+
+    container.innerHTML = "";
+
+    changes.forEach(change => {
+
+        const div = document.createElement("div");
+
+        div.className = "change";
+
+        div.innerHTML =
+            `<span class="old">${escapeHTML(change.original)}</span>
+             →
+             <span class="new">${escapeHTML(change.replacement)}</span>`;
+
+        container.appendChild(div);
+    });
+}
+
+
+/*
+=========================================================
+    HTML ESCAPING
+=========================================================
+*/
+
+function escapeHTML(value) {
+
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+/*
+=========================================================
+    COPY
+=========================================================
+*/
+
+async function copyOutput() {
+
+    const output =
+        document.getElementById("outputText").value;
+
+    if (!output) return;
+
+    try {
+
+        await navigator.clipboard.writeText(output);
+
+        const button =
+            event.target;
+
+        const original =
+            button.textContent;
+
+        button.textContent =
+            "Copied!";
+
+        setTimeout(() => {
+            button.textContent = original;
+        }, 1200);
+
+    } catch (error) {
+
+        alert(
+            "Unable to copy automatically. Select the text and copy it manually."
+        );
+    }
+}
+
+
+/*
+=========================================================
+    CLEAR
+=========================================================
+*/
+
+function clearAll() {
+
+    document.getElementById("inputText").value = "";
+    document.getElementById("outputText").value = "";
+
+    document.getElementById("changeCount").textContent = "0";
+    document.getElementById("wordCount").textContent = "0";
+
+    document.getElementById("changesList").innerHTML =
+        "No changes detected.";
+}
+
+
+/*
+=========================================================
+    EXAMPLE
+=========================================================
+*/
+
+function loadExample() {
+
+    document.getElementById("inputText").value =
+`Thisisatestofwordstogether.
+
+Thequickbrownfoxjumpsoverthelazydog.
+
+Thisexamplecontainsseveralpackedwords.
+
+Sometimeswordsgetaccidentallyjoinedwhen
+textiscopiedfromanotherapplication.`;
+
+    processText();
+}
+
+</script>
+
+</body>
+</html>
