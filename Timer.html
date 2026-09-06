@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resizable Countdown Timer</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    :root {
+        --bg: #111827;
+        --panel: #1f2937;
+        --panel-light: #374151;
+        --text: #f9fafb;
+        --muted: #9ca3af;
+        --accent: #3b82f6;
+        --accent-hover: #2563eb;
+        --danger: #ef4444;
+        --border: #4b5563;
+    }
+
+    html,
+    body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+    }
+
+    body {
+        font-family:
+            system-ui,
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            sans-serif;
+
+        background: var(--bg);
+        color: var(--text);
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        padding: 20px;
+    }
+
+    /* ---------------------------------------------------------
+       TIMER CONTAINER
+       --------------------------------------------------------- */
+
+    .timer-container {
+        width: min(760px, 95vw);
+        height: min(620px, 90vh);
+
+        min-width: 320px;
+        min-height: 360px;
+
+        background: var(--panel);
+        border: 2px solid var(--border);
+        border-radius: 18px;
+
+        display: flex;
+        flex-direction: column;
+
+        overflow: auto;
+
+        /*
+            Allows the user to resize the entire timer.
+            Drag the bottom-right corner.
+        */
+        resize: both;
+
+        box-shadow:
+            0 20px 50px rgba(0, 0, 0, 0.35);
+    }
+
+    /* ---------------------------------------------------------
+       HEADER
+       --------------------------------------------------------- */
+
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        padding: 14px 20px;
+
+        border-bottom: 1px solid var(--border);
+
+        flex-shrink: 0;
+    }
+
+    .title {
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .resize-label {
+        color: var(--muted);
+        font-size: 12px;
+    }
+
+    /* ---------------------------------------------------------
+       TIMER DISPLAY
+       --------------------------------------------------------- */
+
+    .timer-area {
+        flex: 1;
+
+        display: flex;
+        flex-direction: column;
+
+        justify-content: center;
+        align-items: center;
+
+        padding: 25px;
+    }
+
+    .timer-display {
+        font-size: clamp(60px, 13vw, 150px);
+
+        font-weight: 700;
+
+        font-variant-numeric: tabular-nums;
+
+        letter-spacing: 0.03em;
+
+        line-height: 1;
+
+        user-select: none;
+
+        text-align: center;
+    }
+
+    .timer-label {
+        margin-top: 14px;
+
+        font-size: 14px;
+
+        color: var(--muted);
+
+        text-transform: uppercase;
+
+        letter-spacing: 0.15em;
+    }
+
+    /* ---------------------------------------------------------
+       +/- CONTROLS
+       --------------------------------------------------------- */
+
+    .adjust-controls {
+        display: flex;
+
+        justify-content: center;
+        align-items: center;
+
+        gap: 18px;
+
+        margin-top: 25px;
+    }
+
+    .adjust-button {
+        width: 58px;
+        height: 58px;
+
+        border: 0;
+        border-radius: 50%;
+
+        background: var(--panel-light);
+        color: var(--text);
+
+        font-size: 30px;
+        font-weight: 700;
+
+        cursor: pointer;
+
+        transition:
+            transform 0.1s,
+            background 0.15s;
+    }
+
+    .adjust-button:hover {
+        background: #4b5563;
+    }
+
+    .adjust-button:active {
+        transform: scale(0.92);
+    }
+
+    .adjust-info {
+        min-width: 100px;
+
+        text-align: center;
+
+        color: var(--muted);
+
+        font-size: 13px;
+    }
+
+    /* ---------------------------------------------------------
+       PRESETS
+       --------------------------------------------------------- */
+
+    .presets {
+        display: flex;
+
+        flex-wrap: wrap;
+
+        justify-content: center;
+
+        gap: 8px;
+
+        margin-top: 25px;
+    }
+
+    .preset {
+        border: 1px solid var(--border);
+
+        background: transparent;
+
+        color: var(--text);
+
+        border-radius: 8px;
+
+        padding: 9px 15px;
+
+        cursor: pointer;
+
+        font-weight: 600;
+
+        transition:
+            background 0.15s,
+            border-color 0.15s;
+    }
+
+    .preset:hover {
+        background: var(--panel-light);
+        border-color: #6b7280;
+    }
+
+    .preset.active {
+        background: var(--accent);
+        border-color: var(--accent);
+    }
+
+    /* ---------------------------------------------------------
+       MAIN CONTROLS
+       --------------------------------------------------------- */
+
+    .main-controls {
+        display: flex;
+
+        justify-content: center;
+
+        gap: 12px;
+
+        margin-top: 25px;
+    }
+
+    .main-button {
+        min-width: 110px;
+
+        padding: 12px 20px;
+
+        border: 0;
+        border-radius: 9px;
+
+        font-size: 15px;
+        font-weight: 700;
+
+        cursor: pointer;
+
+        background: var(--accent);
+        color: white;
+
+        transition:
+            background 0.15s,
+            transform 0.1s;
+    }
+
+    .main-button:hover {
+        background: var(--accent-hover);
+    }
+
+    .main-button:active {
+        transform: scale(0.97);
+    }
+
+    .reset-button {
+        background: var(--panel-light);
+    }
+
+    .reset-button:hover {
+        background: #4b5563;
+    }
+
+    /* ---------------------------------------------------------
+       SETTINGS
+       --------------------------------------------------------- */
+
+    .settings {
+        padding: 16px 20px;
+
+        border-top: 1px solid var(--border);
+
+        display: flex;
+
+        flex-wrap: wrap;
+
+        justify-content: center;
+
+        align-items: center;
+
+        gap: 15px 30px;
+
+        flex-shrink: 0;
+    }
+
+    .setting {
+        display: flex;
+
+        align-items: center;
+
+        gap: 8px;
+
+        font-size: 14px;
+    }
+
+    select,
+    input[type="range"] {
+        accent-color: var(--accent);
+    }
+
+    select {
+        background: var(--panel-light);
+
+        color: var(--text);
+
+        border: 1px solid var(--border);
+
+        border-radius: 7px;
+
+        padding: 7px 10px;
+    }
+
+    input[type="range"] {
+        width: 110px;
+    }
+
+    .volume-value {
+        min-width: 35px;
+        color: var(--muted);
+    }
+
+    /* ---------------------------------------------------------
+       STATUS
+       --------------------------------------------------------- */
+
+    .status {
+        min-height: 20px;
+
+        margin-top: 15px;
+
+        color: var(--muted);
+
+        font-size: 13px;
+
+        text-align: center;
+    }
+
+    /* ---------------------------------------------------------
+       COMPLETE ANIMATION
+       --------------------------------------------------------- */
+
+    .timer-container.finished {
+        animation: alertFlash 0.8s infinite alternate;
+    }
+
+    @keyframes alertFlash {
+        from {
+            border-color: var(--border);
+        }
+
+        to {
+            border-color: var(--danger);
+            box-shadow:
+                0 0 30px rgba(239, 68, 68, 0.45),
+                0 20px 50px rgba(0, 0, 0, 0.35);
+        }
+    }
+
+    /* ---------------------------------------------------------
+       MOBILE
+       --------------------------------------------------------- */
+
+    @media (max-width: 500px) {
+        body {
+            padding: 8px;
+        }
+
+        .timer-container {
+            width: 100%;
+            height: 100%;
+            min-width: 280px;
+        }
+
+        .header {
+            padding: 12px;
+        }
+
+        .timer-area {
+            padding: 15px;
+        }
+
+        .adjust-button {
+            width: 50px;
+            height: 50px;
+        }
+
+        .settings {
+            padding: 12px;
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<div class="timer-container" id="timerContainer">
+
+    <div class="header">
+        <div class="title">Countdown Timer</div>
+        <div class="resize-label">↘ Drag corner to resize</div>
+    </div>
+
+    <div class="timer-area">
+
+        <div
+            class="timer-display"
+            id="timerDisplay"
+            aria-live="polite">
+            10:00
+        </div>
+
+        <div class="timer-label" id="timerLabel">
+            Minutes : Seconds
+        </div>
+
+        <div class="adjust-controls">
+
+            <button
+                class="adjust-button"
+                id="minusButton"
+                title="Subtract one minute"
+                aria-label="Subtract one minute">
+                −
+            </button>
+
+            <div class="adjust-info">
+                <div>Adjust</div>
+                <div>± 1 minute</div>
+            </div>
+
+            <button
+                class="adjust-button"
+                id="plusButton"
+                title="Add one minute"
+                aria-label="Add one minute">
+                +
+            </button>
+
+        </div>
+
+        <div class="presets">
+
+            <button class="preset" data-minutes="3">3 min</button>
+
+            <button class="preset" data-minutes="5">5 min</button>
+
+            <button class="preset active" data-minutes="10">10 min</button>
+
+            <button class="preset" data-minutes="15">15 min</button>
+
+            <button class="preset" data-minutes="30">30 min</button>
+
+            <button class="preset" data-minutes="60">1 hr</button>
+
+        </div>
+
+        <div class="main-controls">
+
+            <button
+                class="main-button"
+                id="startPauseButton">
+                Start
+            </button>
+
+            <button
+                class="main-button reset-button"
+                id="resetButton">
+                Reset
+            </button>
+
+        </div>
+
+        <div class="status" id="status">
+            Ready
+        </div>
+
+    </div>
+
+    <div class="settings">
+
+        <div class="setting">
+
+            <label for="soundSelect">
+                Alert:
+            </label>
+
+            <select id="soundSelect">
+
+                <option value="bell">
+                    Bell
+                </option>
+
+                <option value="double">
+                    Double Beep
+                </option>
+
+                <option value="triple">
+                    Triple Beep
+                </option>
+
+                <option value="alarm">
+                    Alarm
+                </option>
+
+                <option value="soft">
+                    Soft Chime
+                </option>
+
+                <option value="none">
+                    None
+                </option>
+
+            </select>
+
+        </div>
+
+        <div class="setting">
+
+            <label for="volume">
+                Volume:
+            </label>
+
+            <input
+                type="range"
+                id="volume"
+                min="0"
+                max="100"
+                value="70">
+
+            <span
+                class="volume-value"
+                id="volumeValue">
+                70%
+            </span>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+"use strict";
+
+/*
+ * ============================================================
+ * COUNTDOWN TIMER
+ * ============================================================
+ *
+ * Alert sounds are generated locally using the Web Audio API.
+ *
+ * This means:
+ *
+ * - No external audio files
+ * - No external libraries
+ * - No network requests
+ * - No DRM
+ * - No copyrighted sound assets
+ *
+ * The generated tones are original synthesized sounds.
+ * ============================================================
+ */
+
+const timerDisplay = document.getElementById("timerDisplay");
+const timerLabel = document.getElementById("timerLabel");
+const timerContainer = document.getElementById("timerContainer");
+
+const startPauseButton =
+    document.getElementById("startPauseButton");
+
+const resetButton =
+    document.getElementById("resetButton");
+
+const plusButton =
+    document.getElementById("plusButton");
+
+const minusButton =
+    document.getElementById("minusButton");
+
+const statusElement =
+    document.getElementById("status");
+
+const soundSelect =
+    document.getElementById("soundSelect");
+
+const volumeSlider =
+    document.getElementById("volume");
+
+const volumeValue =
+    document.getElementById("volumeValue");
+
+const presetButtons =
+    document.querySelectorAll(".preset");
+
+
+/*
+ * ============================================================
+ * STATE
+ * ============================================================
+ */
+
+const DEFAULT_MINUTES = 10;
+
+let totalSeconds = DEFAULT_MINUTES * 60;
+let remainingSeconds = totalSeconds;
+
+let timerRunning = false;
+let timerInterval = null;
+
+
+/*
+ * ============================================================
+ * AUDIO
+ * ============================================================
+ */
+
+let audioContext = null;
+
+
+/*
+ * Create the AudioContext only after user interaction.
+ *
+ * Modern browsers often prevent audio from playing until the
+ * user has interacted with the page.
+ */
+
+function getAudioContext() {
+
+    if (!audioContext) {
+
+        const AudioContext =
+            window.AudioContext ||
+            window.webkitAudioContext;
+
+        if (!AudioContext) {
+            return null;
+        }
+
+        audioContext = new AudioContext();
+    }
+
+    if (audioContext.state === "suspended") {
+        audioContext.resume();
+    }
+
+    return audioContext;
+}
+
+
+/*
+ * Generate a tone.
+ */
+
+function playTone(
+    frequency,
+    duration,
+    startTime,
+    type = "sine",
+    volume = 0.2
+) {
+
+    const ctx = getAudioContext();
+
+    if (!ctx) {
+        return;
+    }
+
+    const oscillator =
+        ctx.createOscillator();
+
+    const gain =
+        ctx.createGain();
+
+    oscillator.type = type;
+
+    oscillator.frequency.setValueAtTime(
+        frequency,
+        startTime
+    );
+
+    /*
+     * Fade in/out to prevent clicks.
+     */
+
+    gain.gain.setValueAtTime(
+        0,
+        startTime
+    );
+
+    gain.gain.linearRampToValueAtTime(
+        volume,
+        startTime + 0.02
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+        0.001,
+        startTime + duration
+    );
+
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+
+    oscillator.start(startTime);
+
+    oscillator.stop(
+        startTime + duration + 0.05
+    );
+}
+
+
+/*
+ * ============================================================
+ * ALERT SOUND GENERATOR
+ * ============================================================
+ */
+
+function playAlertSound() {
+
+    const selectedSound =
+        soundSelect.value;
+
+    if (selectedSound === "none") {
+        return;
+    }
+
+    const ctx = getAudioContext();
+
+    if (!ctx) {
+        return;
+    }
+
+    const masterVolume =
+        Number(volumeSlider.value) / 100;
+
+    const now = ctx.currentTime;
+
+    const baseVolume =
+        0.25 * masterVolume;
+
+
+    /*
+     * BELL
+     */
+
+    if (selectedSound === "bell") {
+
+        playTone(
+            880,
+            1.2,
+            now,
+            "sine",
+            baseVolume
+        );
+
+        playTone(
+            1320,
+            0.9,
+            now + 0.05,
+            "sine",
+            baseVolume * 0.65
+        );
+
+        playTone(
+            1760,
+            0.6,
+            now + 0.1,
+            "sine",
+            baseVolume * 0.3
+        );
+
+        return;
+    }
+
+
+    /*
+     * DOUBLE BEEP
+     */
+
+    if (selectedSound === "double") {
+
+        playTone(
+            880,
+            0.25,
+            now,
+            "square",
+            baseVolume
+        );
+
+        playTone(
+            880,
+            0.25,
+            now + 0.35,
+            "square",
+            baseVolume
+        );
+
+        return;
+    }
+
+
+    /*
+     * TRIPLE BEEP
+     */
+
+    if (selectedSound === "triple") {
+
+        for (let i = 0; i < 3; i++) {
+
+            playTone(
+                880,
+                0.2,
+                now + i * 0.28,
+                "square",
+                baseVolume
+            );
+        }
+
+        return;
+    }
+
+
+    /*
+     * ALARM
+     */
+
+    if (selectedSound === "alarm") {
+
+        for (let i = 0; i < 6; i++) {
+
+            const frequency =
+                i % 2 === 0
+                    ? 700
+                    : 1000;
+
+            playTone(
+                frequency,
+                0.25,
+                now + i * 0.3,
+                "sawtooth",
+                baseVolume * 0.65
+            );
+        }
+
+        return;
+    }
+
+
+    /*
+     * SOFT CHIME
+     */
+
+    if (selectedSound === "soft") {
+
+        playTone(
+            523.25,
+            0.8,
+            now,
+            "sine",
+            baseVolume * 0.7
+        );
+
+        playTone(
+            659.25,
+            0.8,
+            now + 0.2,
+            "sine",
+            baseVolume * 0.6
+        );
+
+        playTone(
+            783.99,
+            1.1,
+            now + 0.4,
+            "sine",
+            baseVolume * 0.5
+        );
+    }
+}
+
+
+/*
+ * ============================================================
+ * FORMAT TIME
+ * ============================================================
+ */
+
+function formatTime(seconds) {
+
+    seconds = Math.max(
+        0,
+        Math.floor(seconds)
+    );
+
+    const hours =
+        Math.floor(seconds / 3600);
+
+    const minutes =
+        Math.floor(
+            (seconds % 3600) / 60
+        );
+
+    const secs =
+        seconds % 60;
+
+
+    /*
+     * Under one hour:
+     *
+     * 10:00
+     * 59:59
+     */
+
+    if (hours === 0) {
+
+        return (
+            String(minutes).padStart(2, "0") +
+            ":" +
+            String(secs).padStart(2, "0")
+        );
+    }
+
+
+    /*
+     * One hour or greater:
+     *
+     * 1:00:00
+     * 1:05:30
+     * 2:00:00
+     */
+
+    return (
+        String(hours) +
+        ":" +
+        String(minutes).padStart(2, "0") +
+        ":" +
+        String(secs).padStart(2, "0")
+    );
+}
+
+
+/*
+ * ============================================================
+ * UPDATE DISPLAY
+ * ============================================================
+ */
+
+function updateDisplay() {
+
+    timerDisplay.textContent =
+        formatTime(remainingSeconds);
+
+
+    if (remainingSeconds >= 3600) {
+
+        timerLabel.textContent =
+            "Hours : Minutes : Seconds";
+
+    } else {
+
+        timerLabel.textContent =
+            "Minutes : Seconds";
+    }
+
+
+    /*
+     * Change status.
+     */
+
+    if (remainingSeconds === 0) {
+
+        statusElement.textContent =
+            "Time's up!";
+
+    } else if (timerRunning) {
+
+        statusElement.textContent =
+            "Running";
+
+    } else {
+
+        statusElement.textContent =
+            "Ready";
+    }
+
+
+    /*
+     * Highlight matching preset.
+     */
+
+    const currentMinutes =
+        remainingSeconds / 60;
+
+    presetButtons.forEach(button => {
+
+        const minutes =
+            Number(button.dataset.minutes);
+
+        button.classList.toggle(
+            "active",
+            minutes === currentMinutes
+        );
+    });
+}
+
+
+/*
+ * ============================================================
+ * START TIMER
+ * ============================================================
+ */
+
+function startTimer() {
+
+    if (timerRunning) {
+        return;
+    }
+
+    if (remainingSeconds <= 0) {
+        remainingSeconds = totalSeconds;
+        updateDisplay();
+    }
+
+    /*
+     * Initialize audio after user interaction.
+     */
+
+    getAudioContext();
+
+    timerRunning = true;
+
+    startPauseButton.textContent =
+        "Pause";
+
+    statusElement.textContent =
+        "Running";
+
+
+    /*
+     * Use timestamps rather than simply decrementing every
+     * second. This prevents timer drift when the browser is
+     * busy.
+     */
+
+    let endTime =
+        Date.now() +
+        remainingSeconds * 1000;
+
+
+    timerInterval = setInterval(() => {
+
+        const millisecondsRemaining =
+            endTime - Date.now();
+
+        remainingSeconds =
+            Math.max(
+                0,
+                Math.ceil(
+                    millisecondsRemaining / 1000
+                )
+            );
+
+        updateDisplay();
+
+
+        if (remainingSeconds <= 0) {
+
+            finishTimer();
+        }
+
+    }, 100);
+
+
+    /*
+     * Store the end time on the timer object so pauseTimer()
+     * can calculate the remaining time.
+     */
+
+    timerInterval.endTime = endTime;
+}
+
+
+/*
+ * ============================================================
+ * PAUSE TIMER
+ * ============================================================
+ */
+
+function pauseTimer() {
+
+    if (!timerRunning) {
+        return;
+    }
+
+    const endTime =
+        timerInterval.endTime;
+
+    remainingSeconds =
+        Math.max(
+            0,
+            Math.ceil(
+                (endTime - Date.now()) / 1000
+            )
+        );
+
+    clearInterval(timerInterval);
+
+    timerInterval = null;
+
+    timerRunning = false;
+
+    startPauseButton.textContent =
+        "Start";
+
+    statusElement.textContent =
+        "Paused";
+
+    updateDisplay();
+}
+
+
+/*
+ * ============================================================
+ * FINISH TIMER
+ * ============================================================
+ */
+
+function finishTimer() {
+
+    clearInterval(timerInterval);
+
+    timerInterval = null;
+
+    timerRunning = false;
+
+    remainingSeconds = 0;
+
+    startPauseButton.textContent =
+        "Start";
+
+    statusElement.textContent =
+        "Time's up!";
+
+    timerContainer.classList.add(
+        "finished"
+    );
+
+    updateDisplay();
+
+    playAlertSound();
+}
+
+
+/*
+ * ============================================================
+ * RESET
+ * ============================================================
+ */
+
+function resetTimer() {
+
+    if (timerInterval) {
+
+        clearInterval(
+            timerInterval
+        );
+
+        timerInterval = null;
+    }
+
+    timerRunning = false;
+
+    remainingSeconds = totalSeconds;
+
+    timerContainer.classList.remove(
+        "finished"
+    );
+
+    startPauseButton.textContent =
+        "Start";
+
+    statusElement.textContent =
+        "Ready";
+
+    updateDisplay();
+}
+
+
+/*
+ * ============================================================
+ * SET TIMER
+ * ============================================================
+ */
+
+function setTimerMinutes(minutes) {
+
+    if (timerRunning) {
+        return;
+    }
+
+    minutes =
+        Math.max(
+            1,
+            Math.floor(minutes)
+        );
+
+    totalSeconds =
+        minutes * 60;
+
+    remainingSeconds =
+        totalSeconds;
+
+    timerContainer.classList.remove(
+        "finished"
+    );
+
+    updateDisplay();
+}
+
+
+/*
+ * ============================================================
+ * ADJUST TIMER
+ * ============================================================
+ */
+
+function adjustTimer(minutes) {
+
+    if (timerRunning) {
+        return;
+    }
+
+    const currentMinutes =
+        remainingSeconds / 60;
+
+    const newMinutes =
+        Math.max(
+            1,
+            Math.round(
+                currentMinutes + minutes
+            )
+        );
+
+    totalSeconds =
+        newMinutes * 60;
+
+    remainingSeconds =
+        totalSeconds;
+
+    timerContainer.classList.remove(
+        "finished"
+    );
+
+    updateDisplay();
+}
+
+
+/*
+ * ============================================================
+ * EVENT LISTENERS
+ * ============================================================
+ */
+
+startPauseButton.addEventListener(
+    "click",
+    () => {
+
+        if (timerRunning) {
+            pauseTimer();
+        } else {
+            startTimer();
+        }
+
+    }
+);
+
+
+resetButton.addEventListener(
+    "click",
+    resetTimer
+);
+
+
+plusButton.addEventListener(
+    "click",
+    () => {
+        adjustTimer(1);
+    }
+);
+
+
+minusButton.addEventListener(
+    "click",
+    () => {
+        adjustTimer(-1);
+    }
+);
+
+
+/*
+ * Preset buttons.
+ */
+
+presetButtons.forEach(button => {
+
+    button.addEventListener(
+        "click",
+        () => {
+
+            const minutes =
+                Number(
+                    button.dataset.minutes
+                );
+
+            setTimerMinutes(minutes);
+        }
+    );
+
+});
+
+
+/*
+ * Volume display.
+ */
+
+volumeSlider.addEventListener(
+    "input",
+    () => {
+
+        volumeValue.textContent =
+            volumeSlider.value + "%";
+    }
+);
+
+
+/*
+ * Clicking the sound selector and changing it is also a user
+ * interaction, which makes it safe to initialize the audio
+ * system in most browsers.
+ */
+
+soundSelect.addEventListener(
+    "change",
+    () => {
+
+        getAudioContext();
+
+        statusElement.textContent =
+            "Sound: " +
+            soundSelect.options[
+                soundSelect.selectedIndex
+            ].text;
+    }
+);
+
+
+/*
+ * ============================================================
+ * KEYBOARD SHORTCUTS
+ * ============================================================
+ *
+ * Space = Start/Pause
+ * R     = Reset
+ * +     = Add minute
+ * -     = Remove minute
+ *
+ * Number shortcuts:
+ *
+ * 3 = 3 minutes
+ * 5 = 5 minutes
+ * 1 = 10 minutes
+ *
+ * Additional shortcuts:
+ *
+ * 4 = 15 minutes
+ * 6 = 30 minutes
+ * H = 1 hour
+ * ============================================================
+ */
+
+document.addEventListener(
+    "keydown",
+    event => {
+
+        /*
+         * Don't intercept keyboard input when the user is
+         * interacting with a select or range control.
+         */
+
+        if (
+            event.target.tagName === "SELECT" ||
+            event.target.tagName === "INPUT"
+        ) {
+            return;
+        }
+
+
+        if (event.code === "Space") {
+
+            event.preventDefault();
+
+            if (timerRunning) {
+                pauseTimer();
+            } else {
+                startTimer();
+            }
+
+            return;
+        }
+
+
+        if (
+            event.key === "+" ||
+            event.key === "="
+        ) {
+
+            event.preventDefault();
+
+            adjustTimer(1);
+
+            return;
+        }
+
+
+        if (
+            event.key === "-" ||
+            event.key === "_"
+        ) {
+
+            event.preventDefault();
+
+            adjustTimer(-1);
+
+            return;
+        }
+
+
+        if (
+            event.key === "r" ||
+            event.key === "R"
+        ) {
+
+            resetTimer();
+
+            return;
+        }
+
+
+        /*
+         * Preset shortcuts.
+         */
+
+        if (event.key === "3") {
+            setTimerMinutes(3);
+        }
+
+        if (event.key === "5") {
+            setTimerMinutes(5);
+        }
+
+        if (event.key === "1") {
+            setTimerMinutes(10);
+        }
+
+        if (event.key === "4") {
+            setTimerMinutes(15);
+        }
+
+        if (event.key === "6") {
+            setTimerMinutes(30);
+        }
+
+        if (
+            event.key === "h" ||
+            event.key === "H"
+        ) {
+            setTimerMinutes(60);
+        }
+
+    }
+);
+
+
+/*
+ * ============================================================
+ * INITIALIZE
+ * ============================================================
+ */
+
+updateDisplay();
+
+</script>
+
+</body>
+</html>
