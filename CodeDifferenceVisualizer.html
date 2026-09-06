@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Difference Viewer</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    :root {
+        --bg: #111827;
+        --panel: #1f2937;
+        --panel-dark: #111827;
+        --border: #374151;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+
+        --added-bg: rgba(34, 197, 94, 0.20);
+        --added-line: rgba(34, 197, 94, 0.35);
+
+        --removed-bg: rgba(239, 68, 68, 0.20);
+        --removed-line: rgba(239, 68, 68, 0.35);
+
+        --changed-bg: rgba(234, 179, 8, 0.20);
+        --changed-line: rgba(234, 179, 8, 0.35);
+
+        --accent: #60a5fa;
+    }
+
+    html,
+    body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+                     Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .app {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* ---------------- HEADER ---------------- */
+
+    header {
+        height: 64px;
+        min-height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 18px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .title h1 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 650;
+    }
+
+    .title span {
+        color: var(--muted);
+        font-size: 13px;
+    }
+
+    .actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    button {
+        border: 1px solid var(--border);
+        background: #273449;
+        color: var(--text);
+        padding: 8px 13px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+    }
+
+    button:hover {
+        background: #334155;
+    }
+
+    button.primary {
+        background: #2563eb;
+        border-color: #2563eb;
+    }
+
+    button.primary:hover {
+        background: #1d4ed8;
+    }
+
+    /* ---------------- INPUT AREA ---------------- */
+
+    .input-area {
+        height: 42%;
+        min-height: 250px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1px;
+        background: var(--border);
+    }
+
+    .editor-panel {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--panel-dark);
+    }
+
+    .panel-header {
+        height: 38px;
+        min-height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 10px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .panel-title.original {
+        color: #fca5a5;
+    }
+
+    .panel-title.new {
+        color: #86efac;
+    }
+
+    textarea {
+        flex: 1;
+        width: 100%;
+        resize: none;
+        border: 0;
+        outline: 0;
+        padding: 12px;
+        background: #0b1220;
+        color: #dbeafe;
+        font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+        font-size: 13px;
+        line-height: 1.5;
+        tab-size: 4;
+        white-space: pre;
+        overflow: auto;
+    }
+
+    textarea::placeholder {
+        color: #64748b;
+    }
+
+    /* ---------------- CONTROLS ---------------- */
+
+    .controls {
+        height: 48px;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 12px;
+        background: var(--panel);
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .legend {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        font-size: 12px;
+        color: var(--muted);
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .legend-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+    }
+
+    .legend-added {
+        background: var(--added-line);
+    }
+
+    .legend-removed {
+        background: var(--removed-line);
+    }
+
+    .legend-changed {
+        background: var(--changed-line);
+    }
+
+    .stats {
+        font-size: 12px;
+        color: var(--muted);
+    }
+
+    /* ---------------- DIFF AREA ---------------- */
+
+    .diff-area {
+        flex: 1;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1px;
+        background: var(--border);
+    }
+
+    .diff-panel {
+        min-width: 0;
+        min-height: 0;
+        background: #0b1220;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .diff-scroll {
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+    }
+
+    .diff-table {
+        display: table;
+        width: max-content;
+        min-width: 100%;
+        border-collapse: collapse;
+        font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .diff-row {
+        display: table-row;
+    }
+
+    .line-number {
+        display: table-cell;
+        width: 55px;
+        min-width: 55px;
+        padding: 0 10px;
+        text-align: right;
+        color: #64748b;
+        background: #111827;
+        border-right: 1px solid #1f2937;
+        user-select: none;
+    }
+
+    .line-content {
+        display: table-cell;
+        padding: 0 14px;
+        white-space: pre;
+        vertical-align: top;
+    }
+
+    .diff-row.added .line-content {
+        background: var(--added-bg);
+    }
+
+    .diff-row.added .line-number {
+        background: var(--added-line);
+        color: #bbf7d0;
+    }
+
+    .diff-row.removed .line-content {
+        background: var(--removed-bg);
+    }
+
+    .diff-row.removed .line-number {
+        background: var(--removed-line);
+        color: #fecaca;
+    }
+
+    .diff-row.changed .line-content {
+        background: var(--changed-bg);
+    }
+
+    .diff-row.changed .line-number {
+        background: var(--changed-line);
+        color: #fef08a;
+    }
+
+    .empty-line {
+        color: transparent;
+    }
+
+    /* ---------------- EMPTY STATE ---------------- */
+
+    .empty-state {
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: #64748b;
+        text-align: center;
+        padding: 30px;
+    }
+
+    .empty-state strong {
+        display: block;
+        color: #94a3b8;
+        margin-bottom: 6px;
+    }
+
+    /* ---------------- RESPONSIVE ---------------- */
+
+    @media (max-width: 800px) {
+        .input-area,
+        .diff-area {
+            grid-template-columns: 1fr;
+        }
+
+        .input-area {
+            height: 50%;
+        }
+
+        .diff-area {
+            overflow: auto;
+        }
+
+        .diff-panel {
+            min-height: 300px;
+        }
+
+        .legend {
+            display: none;
+        }
+
+        .title span {
+            display: none;
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+    <header>
+        <div class="title">
+            <h1>Code Difference Viewer</h1>
+            <span>Compare two versions of your code</span>
+        </div>
+
+        <div class="actions">
+            <button onclick="loadExample()">Example</button>
+            <button onclick="clearAll()">Clear</button>
+            <button class="primary" onclick="compareCode()">Compare</button>
+        </div>
+    </header>
+
+    <section class="input-area">
+
+        <div class="editor-panel">
+            <div class="panel-header">
+                <span class="panel-title original">Original Code</span>
+                <button onclick="copyText('original')">Copy</button>
+            </div>
+
+            <textarea
+                id="original"
+                spellcheck="false"
+                placeholder="Paste the original version of your code here..."
+            ></textarea>
+        </div>
+
+        <div class="editor-panel">
+            <div class="panel-header">
+                <span class="panel-title new">New Code</span>
+                <button onclick="copyText('updated')">Copy</button>
+            </div>
+
+            <textarea
+                id="updated"
+                spellcheck="false"
+                placeholder="Paste the new version of your code here..."
+            ></textarea>
+        </div>
+
+    </section>
+
+    <div class="controls">
+
+        <div class="legend">
+            <div class="legend-item">
+                <span class="legend-color legend-added"></span>
+                Added
+            </div>
+
+            <div class="legend-item">
+                <span class="legend-color legend-removed"></span>
+                Removed
+            </div>
+
+            <div class="legend-item">
+                <span class="legend-color legend-changed"></span>
+                Changed
+            </div>
+        </div>
+
+        <div class="stats" id="stats">
+            No comparison yet
+        </div>
+
+    </div>
+
+    <section class="diff-area">
+
+        <div class="diff-panel">
+            <div class="diff-scroll" id="leftScroll">
+                <div class="empty-state">
+                    <div>
+                        <strong>Original Code</strong>
+                        Run a comparison to see differences.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="diff-panel">
+            <div class="diff-scroll" id="rightScroll">
+                <div class="empty-state">
+                    <div>
+                        <strong>New Code</strong>
+                        Run a comparison to see differences.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+</div>
+
+<script>
+/*
+    CODE DIFFERENCE VIEWER
+    ----------------------
+    Standalone implementation.
+
+    Uses a Longest Common Subsequence (LCS) algorithm
+    to identify matching lines and determine additions,
+    removals, and changes.
+*/
+
+
+const originalInput = document.getElementById("original");
+const updatedInput = document.getElementById("updated");
+
+const leftScroll = document.getElementById("leftScroll");
+const rightScroll = document.getElementById("rightScroll");
+
+const stats = document.getElementById("stats");
+
+let syncingScroll = false;
+
+
+/* --------------------------------------------------
+   COMPARE CODE
+-------------------------------------------------- */
+
+function compareCode() {
+
+    const original = originalInput.value.replace(/\r\n/g, "\n");
+    const updated = updatedInput.value.replace(/\r\n/g, "\n");
+
+    const originalLines = original === ""
+        ? []
+        : original.split("\n");
+
+    const updatedLines = updated === ""
+        ? []
+        : updated.split("\n");
+
+    const result = diffLines(originalLines, updatedLines);
+
+    renderDiff(result);
+
+    updateStats(result);
+}
+
+
+/* --------------------------------------------------
+   DIFF ALGORITHM
+-------------------------------------------------- */
+
+function diffLines(a, b) {
+
+    const n = a.length;
+    const m = b.length;
+
+    /*
+        LCS matrix.
+
+        dp[i][j] = number of matching lines
+        between a[i...] and b[j...]
+    */
+
+    const dp = Array.from(
+        { length: n + 1 },
+        () => new Array(m + 1).fill(0)
+    );
+
+    for (let i = n - 1; i >= 0; i--) {
+
+        for (let j = m - 1; j >= 0; j--) {
+
+            if (a[i] === b[j]) {
+                dp[i][j] = dp[i + 1][j + 1] + 1;
+            } else {
+                dp[i][j] = Math.max(
+                    dp[i + 1][j],
+                    dp[i][j + 1]
+                );
+            }
+        }
+    }
+
+    const result = [];
+
+    let i = 0;
+    let j = 0;
+
+    while (i < n && j < m) {
+
+        if (a[i] === b[j]) {
+
+            result.push({
+                type: "same",
+                left: a[i],
+                right: b[j],
+                leftNumber: i + 1,
+                rightNumber: j + 1
+            });
+
+            i++;
+            j++;
+
+        } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+
+            result.push({
+                type: "removed",
+                left: a[i],
+                right: "",
+                leftNumber: i + 1,
+                rightNumber: null
+            });
+
+            i++;
+
+        } else {
+
+            result.push({
+                type: "added",
+                left: "",
+                right: b[j],
+                leftNumber: null,
+                rightNumber: j + 1
+            });
+
+            j++;
+        }
+    }
+
+    while (i < n) {
+
+        result.push({
+            type: "removed",
+            left: a[i],
+            right: "",
+            leftNumber: i + 1,
+            rightNumber: null
+        });
+
+        i++;
+    }
+
+    while (j < m) {
+
+        result.push({
+            type: "added",
+            left: "",
+            right: b[j],
+            leftNumber: null,
+            rightNumber: j + 1
+        });
+
+        j++;
+    }
+
+    /*
+        Convert adjacent removed + added pairs into
+        "changed" lines.
+
+        This makes modifications much easier to understand.
+    */
+
+    for (let x = 0; x < result.length - 1; x++) {
+
+        if (
+            result[x].type === "removed" &&
+            result[x + 1].type === "added"
+        ) {
+
+            result[x].type = "changed";
+            result[x].right = result[x + 1].right;
+            result[x].rightNumber = result[x + 1].rightNumber;
+
+            result.splice(x + 1, 1);
+
+            x--;
+        }
+    }
+
+    return result;
+}
+
+
+/* --------------------------------------------------
+   RENDER DIFF
+-------------------------------------------------- */
+
+function renderDiff(result) {
+
+    const leftTable = document.createElement("div");
+    leftTable.className = "diff-table";
+
+    const rightTable = document.createElement("div");
+    rightTable.className = "diff-table";
+
+    if (result.length === 0) {
+
+        leftScroll.innerHTML = emptyMessage("No code");
+        rightScroll.innerHTML = emptyMessage("No code");
+
+        return;
+    }
+
+    result.forEach(row => {
+
+        const leftRow = document.createElement("div");
+        const rightRow = document.createElement("div");
+
+        leftRow.className = "diff-row " + row.type;
+        rightRow.className = "diff-row " + row.type;
+
+        /* LEFT */
+
+        const leftNumber = document.createElement("div");
+        leftNumber.className = "line-number";
+
+        leftNumber.textContent =
+            row.leftNumber !== null
+                ? row.leftNumber
+                : "";
+
+        const leftContent = document.createElement("div");
+        leftContent.className = "line-content";
+
+        if (row.left === "") {
+            leftContent.classList.add("empty-line");
+            leftContent.textContent = " ";
+        } else {
+            leftContent.textContent = row.left;
+        }
+
+        leftRow.appendChild(leftNumber);
+        leftRow.appendChild(leftContent);
+
+
+        /* RIGHT */
+
+        const rightNumber = document.createElement("div");
+        rightNumber.className = "line-number";
+
+        rightNumber.textContent =
+            row.rightNumber !== null
+                ? row.rightNumber
+                : "";
+
+        const rightContent = document.createElement("div");
+        rightContent.className = "line-content";
+
+        if (row.right === "") {
+            rightContent.classList.add("empty-line");
+            rightContent.textContent = " ";
+        } else {
+            rightContent.textContent = row.right;
+        }
+
+        rightRow.appendChild(rightNumber);
+        rightRow.appendChild(rightContent);
+
+
+        leftTable.appendChild(leftRow);
+        rightTable.appendChild(rightRow);
+    });
+
+
+    leftScroll.innerHTML = "";
+    rightScroll.innerHTML = "";
+
+    leftScroll.appendChild(leftTable);
+    rightScroll.appendChild(rightTable);
+
+
+    synchronizeScroll();
+}
+
+
+/* --------------------------------------------------
+   EMPTY MESSAGE
+-------------------------------------------------- */
+
+function emptyMessage(title) {
+
+    return `
+        <div class="empty-state">
+            <div>
+                <strong>${title}</strong>
+                Nothing to display.
+            </div>
+        </div>
+    `;
+}
+
+
+/* --------------------------------------------------
+   STATISTICS
+-------------------------------------------------- */
+
+function updateStats(result) {
+
+    let added = 0;
+    let removed = 0;
+    let changed = 0;
+    let unchanged = 0;
+
+    result.forEach(row => {
+
+        switch (row.type) {
+
+            case "added":
+                added++;
+                break;
+
+            case "removed":
+                removed++;
+                break;
+
+            case "changed":
+                changed++;
+                break;
+
+            case "same":
+                unchanged++;
+                break;
+        }
+    });
+
+    stats.textContent =
+        `${added} added • ${removed} removed • ` +
+        `${changed} changed • ${unchanged} unchanged`;
+}
+
+
+/* --------------------------------------------------
+   SYNCHRONIZED SCROLLING
+-------------------------------------------------- */
+
+function synchronizeScroll() {
+
+    leftScroll.onscroll = () => {
+
+        if (syncingScroll) return;
+
+        syncingScroll = true;
+
+        rightScroll.scrollTop = leftScroll.scrollTop;
+        rightScroll.scrollLeft = leftScroll.scrollLeft;
+
+        requestAnimationFrame(() => {
+            syncingScroll = false;
+        });
+    };
+
+
+    rightScroll.onscroll = () => {
+
+        if (syncingScroll) return;
+
+        syncingScroll = true;
+
+        leftScroll.scrollTop = rightScroll.scrollTop;
+        leftScroll.scrollLeft = rightScroll.scrollLeft;
+
+        requestAnimationFrame(() => {
+            syncingScroll = false;
+        });
+    };
+}
+
+
+/* --------------------------------------------------
+   COPY
+-------------------------------------------------- */
+
+async function copyText(id) {
+
+    const element = document.getElementById(id);
+
+    try {
+
+        await navigator.clipboard.writeText(element.value);
+
+    } catch {
+
+        element.select();
+        document.execCommand("copy");
+        element.setSelectionRange(0, 0);
+    }
+}
+
+
+/* --------------------------------------------------
+   CLEAR
+-------------------------------------------------- */
+
+function clearAll() {
+
+    originalInput.value = "";
+    updatedInput.value = "";
+
+    leftScroll.innerHTML = emptyMessage("Original Code");
+    rightScroll.innerHTML = emptyMessage("New Code");
+
+    stats.textContent = "No comparison yet";
+}
+
+
+/* --------------------------------------------------
+   EXAMPLE
+-------------------------------------------------- */
+
+function loadExample() {
+
+    originalInput.value =
+`function greet(name) {
+    const message = "Hello " + name;
+    console.log(message);
+}
+
+greet("World");`;
+
+
+    updatedInput.value =
+`function greet(name) {
+    const message = \`Hello, \${name}!\`;
+    console.log(message);
+}
+
+function goodbye(name) {
+    console.log("Goodbye " + name);
+}
+
+greet("World");`;
+
+    compareCode();
+}
+
+
+/* --------------------------------------------------
+   KEYBOARD SHORTCUT
+-------------------------------------------------- */
+
+document.addEventListener("keydown", event => {
+
+    if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key === "Enter"
+    ) {
+        event.preventDefault();
+        compareCode();
+    }
+});
+
+
+/* --------------------------------------------------
+   TAB SUPPORT IN TEXTAREAS
+-------------------------------------------------- */
+
+[originalInput, updatedInput].forEach(textarea => {
+
+    textarea.addEventListener("keydown", event => {
+
+        if (event.key !== "Tab") {
+            return;
+        }
+
+        event.preventDefault();
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+
+        textarea.value =
+            textarea.value.substring(0, start) +
+            "    " +
+            textarea.value.substring(end);
+
+        textarea.selectionStart = start + 4;
+        textarea.selectionEnd = start + 4;
+    });
+
+});
+
+
+/* --------------------------------------------------
+   AUTOMATIC COMPARISON
+-------------------------------------------------- */
+
+let compareTimer;
+
+[originalInput, updatedInput].forEach(textarea => {
+
+    textarea.addEventListener("input", () => {
+
+        clearTimeout(compareTimer);
+
+        compareTimer = setTimeout(() => {
+
+            if (
+                originalInput.value ||
+                updatedInput.value
+            ) {
+                compareCode();
+            }
+
+        }, 300);
+
+    });
+
+});
+
+</script>
+
+</body>
+</html>
