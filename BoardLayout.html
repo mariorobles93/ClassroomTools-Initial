@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sheet Shape Layout Planner</title>
+<style>
+  :root {
+    --bg:#f4f6f8; --panel:#fff; --border:#cbd5e1; --text:#172033;
+    --muted:#64748b; --accent:#2563eb; --danger:#dc2626; --danger-bg:#fee2e2;
+    --success:#15803d; --success-bg:#dcfce7;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Arial,Helvetica,sans-serif; background:var(--bg); color:var(--text); }
+  .app { max-width:1500px; margin:auto; padding:20px; }
+  h1 { margin:0 0 6px; font-size:26px; }
+  .subtitle { color:var(--muted); margin-bottom:18px; }
+  .grid { display:grid; grid-template-columns:360px 1fr; gap:18px; align-items:start; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; box-shadow:0 2px 7px #0000000b; }
+  h2 { font-size:17px; margin:0 0 12px; }
+  h3 { font-size:14px; margin:18px 0 8px; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  label { display:block; font-size:12px; font-weight:bold; color:#334155; margin-bottom:5px; }
+  input, select, button {
+    width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:6px;
+    font:inherit; background:white;
+  }
+  input:focus, select:focus { outline:2px solid #93c5fd; border-color:var(--accent); }
+  button { cursor:pointer; font-weight:bold; }
+  .primary { background:var(--accent); color:white; border-color:var(--accent); }
+  .secondary { background:#e2e8f0; }
+  .danger { color:#b91c1c; background:#fff; border-color:#fecaca; }
+  .controls { display:grid; gap:10px; }
+  .message { margin-top:10px; padding:10px; border-radius:6px; font-size:13px; display:none; }
+  .message.error { display:block; color:#991b1b; background:var(--danger-bg); border:1px solid #fecaca; }
+  .message.success { display:block; color:#166534; background:var(--success-bg); border:1px solid #bbf7d0; }
+  .pieces { display:grid; gap:8px; max-height:400px; overflow:auto; }
+  .piece {
+    border:1px solid var(--border); border-radius:7px; padding:9px; background:#f8fafc;
+    display:grid; grid-template-columns:1fr 72px 32px; gap:8px; align-items:center;
+  }
+  .piece-name { font-weight:bold; font-size:13px; }
+  .piece-meta { font-size:11px; color:var(--muted); margin-top:2px; }
+  .piece input { padding:6px; }
+  .remove { width:32px; height:32px; padding:0; color:#b91c1c; }
+  .empty { color:var(--muted); font-size:13px; padding:12px 0; }
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px; }
+  .stat { border:1px solid var(--border); border-radius:7px; padding:10px; background:#f8fafc; }
+  .stat strong { display:block; font-size:18px; }
+  .stat span { color:var(--muted); font-size:11px; }
+  .canvas-wrap {
+    background:#e2e8f0; border:1px solid var(--border); border-radius:8px; padding:15px;
+    overflow:auto; min-height:500px; display:flex; align-items:center; justify-content:center;
+  }
+  canvas { background:white; box-shadow:0 2px 8px #0003; max-width:none; }
+  .legend { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; font-size:11px; }
+  .legend span { display:inline-flex; align-items:center; gap:5px; }
+  .swatch { width:12px; height:12px; border:1px solid #64748b; display:inline-block; }
+  table { width:100%; border-collapse:collapse; margin-top:12px; font-size:12px; }
+  th,td { padding:7px; border-bottom:1px solid #e2e8f0; text-align:left; }
+  th { background:#f8fafc; }
+  .fit { color:var(--success); font-weight:bold; }
+  .nofit { color:var(--danger); font-weight:bold; }
+  .hint { color:var(--muted); font-size:11px; line-height:1.4; margin-top:7px; }
+  @media(max-width:900px) {
+    .grid { grid-template-columns:1fr; }
+    .stats { grid-template-columns:repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Sheet Shape Layout Planner</h1>
+  <div class="subtitle">Define a parent sheet, add rectangular pieces, then calculate a packed layout using rectangular spacing.</div>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>Parent Sheet</h2>
+      <div class="row">
+        <div>
+          <label for="sheetW">Width</label>
+          <input id="sheetW" type="number" min="0.001" step="0.001" value="8">
+        </div>
+        <div>
+          <label for="sheetH">Height</label>
+          <input id="sheetH" type="number" min="0.001" step="0.001" value="4">
+        </div>
+      </div>
+
+      <h3>Units</h3>
+      <select id="unit">
+        <option value="in">Inches</option>
+        <option value="ft">Feet</option>
+      </select>
+
+      <h3>Rectangular Spacing</h3>
+      <div class="row">
+        <div>
+          <label for="gapX">Horizontal spacing</label>
+          <input id="gapX" type="number" min="0" step="0.001" value="0">
+        </div>
+        <div>
+          <label for="gapY">Vertical spacing</label>
+          <input id="gapY" type="number" min="0" step="0.001" value="0">
+        </div>
+      </div>
+      <div class="hint">Spacing is measured between neighboring pieces. Pieces may not overlap the parent sheet boundary.</div>
+
+      <h2 style="margin-top:20px">Add Shape Piece</h2>
+      <div class="row">
+        <div>
+          <label for="pieceName">Name</label>
+          <input id="pieceName" type="text" placeholder="Piece A">
+        </div>
+        <div>
+          <label for="pieceQty">Amount</label>
+          <input id="pieceQty" type="number" min="1" step="1" value="1">
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label for="pieceW">Width</label>
+          <input id="pieceW" type="number" min="0.001" step="0.001" placeholder="2">
+        </div>
+        <div>
+          <label for="pieceH">Height</label>
+          <input id="pieceH" type="number" min="0.001" step="0.001" placeholder="1">
+        </div>
+      </div>
+      <button id="addBtn" class="primary" style="margin-top:10px">Add Piece</button>
+      <div id="areaMessage" class="message"></div>
+
+      <h3>Piece List</h3>
+      <div id="pieces" class="pieces"><div class="empty">No pieces added.</div></div>
+
+      <div class="controls" style="margin-top:12px">
+        <button id="calculateBtn" class="primary">Calculate & Arrange</button>
+        <button id="clearBtn" class="secondary">Clear All Pieces</button>
+      </div>
+      <div class="hint">The packing calculation allows each rectangle to rotate 90° when that improves fit. It uses a deterministic guillotine-style packing heuristic and then labels every unplaced instance as <b>DO NOT FIT</b>.</div>
+    </section>
+
+    <section class="panel">
+      <h2>Parent Sheet Layout</h2>
+      <div id="stats" class="stats">
+        <div class="stat"><strong id="usedCount">0</strong><span>Pieces placed</span></div>
+        <div class="stat"><strong id="unfitCount">0</strong><span>Do not fit</span></div>
+        <div class="stat"><strong id="usedArea">0</strong><span>Placed area</span></div>
+        <div class="stat"><strong id="sheetArea">32</strong><span>Sheet area</span></div>
+      </div>
+      <div class="canvas-wrap"><canvas id="canvas" width="800" height="400"></canvas></div>
+      <div id="legend" class="legend"></div>
+      <div id="results"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const state = { pieces: [], placements: [], unfit: [] };
+const $ = id => document.getElementById(id);
+
+function n(id) { return Number($(id).value); }
+function fmt(v) {
+  if (!Number.isFinite(v)) return "";
+  return Number(v.toFixed(4)).toString();
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function sheetDims() {
+  return { w:n("sheetW"), h:n("sheetH"), unit:$("unit").value };
+}
+
+function totalPieceArea() {
+  return state.pieces.reduce((sum,p) => sum + p.w*p.h*p.qty, 0);
+}
+
+function updateAreaMessage() {
+  const s = sheetDims();
+  const msg = $("areaMessage");
+  const area = totalPieceArea();
+  const sheetArea = s.w*s.h;
+  if (!(s.w > 0 && s.h > 0)) {
+    msg.className = "message error";
+    msg.textContent = "Enter a valid parent sheet width and height.";
+    return;
+  }
+  if (area > sheetArea + 1e-10) {
+    msg.className = "message error";
+    msg.textContent = `Warning: total piece area (${fmt(area)} ${s.unit}²) exceeds parent sheet area (${fmt(sheetArea)} ${s.unit}²). Some pieces must be marked DO NOT FIT.`;
+  } else {
+    msg.className = "message success";
+    msg.textContent = `Total piece area: ${fmt(area)} ${s.unit}² of ${fmt(sheetArea)} ${s.unit}².`;
+  }
+}
+
+function renderPieces() {
+  const el = $("pieces");
+  if (!state.pieces.length) {
+    el.innerHTML = '<div class="empty">No pieces added.</div>';
+    updateAreaMessage();
+    return;
+  }
+  el.innerHTML = state.pieces.map((p,i) => `
+    <div class="piece">
+      <div>
+        <div class="piece-name">${escapeHtml(p.name)}</div>
+        <div class="piece-meta">${fmt(p.w)} × ${fmt(p.h)} ${p.unit} · area ${fmt(p.w*p.h)} ${p.unit}²</div>
+      </div>
+      <input title="Amount" type="number" min="0" step="1" value="${p.qty}" data-qty="${i}">
+      <button class="remove" title="Remove" data-remove="${i}">×</button>
+    </div>`).join("");
+
+  el.querySelectorAll("[data-qty]").forEach(inp => {
+    inp.addEventListener("change", () => {
+      const i = Number(inp.dataset.qty);
+      state.pieces[i].qty = Math.max(0, Math.floor(Number(inp.value) || 0));
+      renderPieces();
+    });
+  });
+  el.querySelectorAll("[data-remove]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.pieces.splice(Number(btn.dataset.remove),1);
+      renderPieces();
+      clearLayout();
+    });
+  });
+  updateAreaMessage();
+}
+
+function addPiece() {
+  const name = $("pieceName").value.trim() || `Piece ${state.pieces.length+1}`;
+  const w = n("pieceW"), h = n("pieceH"), qty = Math.floor(n("pieceQty"));
+  const unit = $("unit").value;
+  const s = sheetDims();
+
+  if (!(s.w > 0 && s.h > 0)) { alert("Enter a valid parent sheet size first."); return; }
+  if (!(w > 0 && h > 0 && qty > 0)) { alert("Enter positive width, height, and amount."); return; }
+
+  // Store all dimensions in the currently selected unit. Changing the global unit
+  // after entries have been added is intentionally treated as a new display unit,
+  // so existing entries are converted to preserve their physical size.
+  state.pieces.push({name,w,h,qty,unit});
+  $("pieceName").value = "";
+  $("pieceW").value = "";
+  $("pieceH").value = "";
+  $("pieceQty").value = "1";
+  renderPieces();
+  clearLayout();
+}
+
+function convertAllUnits(oldUnit, newUnit) {
+  if (oldUnit === newUnit) return;
+  const factor = oldUnit === "in" && newUnit === "ft" ? 1/12 : 12;
+  $("sheetW").value = fmt(n("sheetW")*factor);
+  $("sheetH").value = fmt(n("sheetH")*factor);
+  $("gapX").value = fmt(n("gapX")*factor);
+  $("gapY").value = fmt(n("gapY")*factor);
+  state.pieces.forEach(p => { p.w *= factor; p.h *= factor; p.unit = newUnit; });
+  renderPieces();
+  clearLayout();
+}
+
+// Guillotine packing: each free rectangle can be split into two rectangles after
+// placing a piece. Pieces are considered largest-first. Both orientations are tested.
+function packPieces(sheetW, sheetH, gapX, gapY) {
+  const instances = [];
+  state.pieces.forEach((p,pi) => {
+    for (let k=1;k<=p.qty;k++) instances.push({
+      id:`${pi}-${k}`, pieceIndex:pi, name:p.name, w:p.w, h:p.h, instance:k
+    });
+  });
+
+  instances.sort((a,b) => {
+    const aa=a.w*a.h, ab=b.w*b.h;
+    return ab-aa || Math.max(b.w,b.h)-Math.max(a.w,a.h);
+  });
+
+  let free = [{x:0,y:0,w:sheetW,h:sheetH}];
+  const placed=[], unfit=[];
+
+  function candidates(item, rect) {
+    const out=[];
+    for (const rotated of [false,true]) {
+      if (rotated && Math.abs(item.w-item.h)<1e-12) continue;
+      const w=rotated?item.h:item.w, h=rotated?item.w:item.h;
+      // A piece placed at the edge doesn't need a gap beyond it. Internal
+      // neighboring pieces require gapX/gapY.
+      const reqW=w, reqH=h;
+      if (reqW <= rect.w+1e-10 && reqH <= rect.h+1e-10) {
+        out.push({rotated,w,h,score:(rect.w*rect.h-w*h)});
+      }
+    }
+    return out;
+  }
+
+  for (const item of instances) {
+    let best=null;
+    free.forEach((r,ri) => {
+      for (const c of candidates(item,r)) {
+        const leftoverW=r.w-c.w, leftoverH=r.h-c.h;
+        // Prefer low waste and corners; also consider gap penalty where the
+        // split leaves space for a future piece.
+        const score=c.score + Math.min(leftoverW, leftoverH)*0.001;
+        if (!best || score < best.score) best={ri,r,c,score};
+      }
+    });
+
+    if (!best) {
+      unfit.push(item);
+      continue;
+    }
+
+    const r=best.r, c=best.c;
+    placed.push({
+      ...item, x:r.x, y:r.y, w:c.w, h:c.h, rotated:c.rotated
+    });
+
+    free.splice(best.ri,1);
+
+    // Split the used free rectangle. Spacing is modeled as reserved space
+    // between neighboring rectangles, but never outside the parent boundary.
+    const rightGap = Math.min(gapX, Math.max(0,r.w-c.w));
+    const bottomGap = Math.min(gapY, Math.max(0,r.h-c.h));
+
+    const rightW = r.w-c.w-rightGap;
+    const bottomH = r.h-c.h-bottomGap;
+
+    // Two possible guillotine splits; choose the one that tends to preserve
+    // larger rectangular regions.
+    const optionA = [
+      rightW>1e-10 ? {x:r.x+c.w+rightGap,y:r.y,w:rightW,h:c.h} : null,
+      bottomH>1e-10 ? {x:r.x,y:r.y+c.h+bottomGap,w:r.w,h:bottomH} : null
+    ].filter(Boolean);
+
+    const optionB = [
+      rightW>1e-10 ? {x:r.x+c.w+rightGap,y:r.y,w:rightW,h:r.h} : null,
+      bottomH>1e-10 ? {x:r.x,y:r.y+c.h+bottomGap,w:c.w,h:bottomH} : null
+    ].filter(Boolean);
+
+    const scoreRects = arr => arr.reduce((sum,z)=>sum + Math.min(z.w,z.h),0);
+    const chosen = scoreRects(optionA) >= scoreRects(optionB) ? optionA : optionB;
+    free.push(...chosen);
+    pruneFree();
+  }
+
+  function pruneFree() {
+    // Remove rectangles contained in another free rectangle.
+    for (let i=free.length-1;i>=0;i--) {
+      const a=free[i];
+      let contained=false;
+      for (let j=0;j<free.length;j++) if(i!==j) {
+        const b=free[j];
+        if(a.x>=b.x-1e-10 && a.y>=b.y-1e-10 &&
+           a.x+a.w<=b.x+b.w+1e-10 && a.y+a.h<=b.y+b.h+1e-10) {
+          contained=true; break;
+        }
+      }
+      if(contained) free.splice(i,1);
+    }
+  }
+
+  return {placed,unfit};
+}
+
+function clearLayout() {
+  state.placements=[]; state.unfit=[];
+  draw();
+  $("results").innerHTML="";
+  $("legend").innerHTML="";
+  updateStats();
+}
+
+function calculate() {
+  const s=sheetDims(), gx=n("gapX"), gy=n("gapY");
+  if (!(s.w>0 && s.h>0)) { alert("Enter a valid parent sheet size."); return; }
+  if (!(gx>=0 && gy>=0)) { alert("Spacing cannot be negative."); return; }
+  const result=packPieces(s.w,s.h,gx,gy);
+  state.placements=result.placed;
+  state.unfit=result.unfit;
+  draw();
+  updateStats();
+  renderResults();
+}
+
+function updateStats() {
+  const s=sheetDims();
+  const area=state.placements.reduce((sum,p)=>sum+p.w*p.h,0);
+  $("usedCount").textContent=state.placements.length;
+  $("unfitCount").textContent=state.unfit.length;
+  $("usedArea").textContent=fmt(area);
+  $("sheetArea").textContent=fmt(s.w*s.h);
+}
+
+function renderResults() {
+  const all=[];
+  state.placements.forEach(p=>all.push({...p,status:"FIT"}));
+  state.unfit.forEach(p=>all.push({...p,status:"DO NOT FIT"}));
+  all.sort((a,b)=>a.pieceIndex-b.pieceIndex || a.instance-b.instance);
+
+  if (!all.length) { $("results").innerHTML=""; return; }
+  $("results").innerHTML=`
+    <table>
+      <thead><tr><th>Piece</th><th>Instance</th><th>Size</th><th>Position</th><th>Status</th></tr></thead>
+      <tbody>${all.map(p=>`
+        <tr>
+          <td>${escapeHtml(p.name)}</td>
+          <td>${p.instance}</td>
+          <td>${fmt(p.w)} × ${fmt(p.h)}</td>
+          <td>${p.status==="FIT" ? `${fmt(p.x)}, ${fmt(p.y)}` : "—"}</td>
+          <td class="${p.status==="FIT"?"fit":"nofit"}">${p.status}</td>
+        </tr>`).join("")}</tbody>
+    </table>`;
+}
+
+function colorFor(index) {
+  // Generated from a fixed palette so the same piece type is visually consistent.
+  const colors=["#bfdbfe","#bbf7d0","#fde68a","#fecaca","#ddd6fe","#fbcfe8","#bae6fd","#d9f99d","#fed7aa","#c7d2fe"];
+  return colors[index % colors.length];
+}
+
+function draw() {
+  const s=sheetDims();
+  const canvas=$("canvas"), ctx=canvas.getContext("2d");
+  const maxW=Math.max(1,s.w), maxH=Math.max(1,s.h);
+  const availableW=1100, availableH=650;
+  const scale=Math.min(availableW/maxW,availableH/maxH);
+  canvas.width=Math.max(300,Math.round(maxW*scale));
+  canvas.height=Math.max(180,Math.round(maxH*scale));
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  ctx.fillStyle="#fff"; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle="#111827"; ctx.lineWidth=2; ctx.strokeRect(1,1,canvas.width-2,canvas.height-2);
+
+  state.placements.forEach(p=>{
+    const x=p.x*scale,y=p.y*scale,w=p.w*scale,h=p.h*scale;
+    ctx.fillStyle=colorFor(p.pieceIndex);
+    ctx.fillRect(x,y,w,h);
+    ctx.strokeStyle="#334155"; ctx.lineWidth=1; ctx.strokeRect(x,y,w,h);
+    if(w>40 && h>24) {
+      ctx.fillStyle="#111827";
+      ctx.font=Math.max(9,Math.min(15,Math.min(w/8,h/3)))+"px Arial";
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(`${p.name} #${p.instance}`,x+w/2,y+h/2);
+      ctx.font="10px Arial";
+      ctx.fillText(`${fmt(p.w)} × ${fmt(p.h)}`,x+w/2,y+h/2+13);
+    }
+  });
+
+  const names=[...new Set(state.placements.map(p=>p.pieceIndex))];
+  $("legend").innerHTML=names.map(i=>{
+    const p=state.pieces[i];
+    return `<span><i class="swatch" style="background:${colorFor(i)}"></i>${escapeHtml(p.name)}</span>`;
+  }).join("");
+}
+
+$("addBtn").addEventListener("click",addPiece);
+$("calculateBtn").addEventListener("click",calculate);
+$("clearBtn").addEventListener("click",()=>{
+  state.pieces=[]; clearLayout(); renderPieces();
+});
+["sheetW","sheetH","gapX","gapY"].forEach(id=>$(id).addEventListener("input",()=>{
+  updateAreaMessage(); clearLayout(); updateStats();
+}));
+
+let previousUnit=$("unit").value;
+$("unit").addEventListener("change",()=>{
+  const newUnit=$("unit").value;
+  convertAllUnits(previousUnit,newUnit);
+  previousUnit=newUnit;
+});
+
+["pieceName","pieceQty","pieceW","pieceH"].forEach(id=>$(id).addEventListener("keydown",e=>{
+  if(e.key==="Enter") addPiece();
+}));
+
+renderPieces();
+updateStats();
+draw();
+</script>
+</body>
+</html>
