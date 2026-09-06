@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ruler Reading Quiz</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --border: #e2e8f0;
+            --success: #16a34a;
+            --danger: #dc2626;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 2rem;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            max-width: 900px;
+            width: 100%;
+        }
+
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .unit-toggle label {
+            margin-right: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .timer {
+            font-size: 1.5rem;
+            font-family: monospace;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto 2rem auto;
+            background-color: #fefefe;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .input-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        input[type="text"] {
+            padding: 0.75rem;
+            font-size: 1.1rem;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            width: 200px;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary);
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            font-size: 1.1rem;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #1d4ed8;
+        }
+
+        button:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .instructions {
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        #feedback {
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-align: center;
+            min-height: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .correct { color: var(--success); }
+        .incorrect { color: var(--danger); }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            background-color: var(--bg-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .stat-box h4 {
+            margin: 0 0 0.5rem 0;
+            color: #64748b;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        .stat-box p {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--text-main);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-controls">
+        <div class="unit-toggle">
+            <label>
+                <input type="radio" name="unit" value="metric" checked onchange="handleUnitChange()"> Metric (12 cm)
+            </label>
+            <label>
+                <input type="radio" name="unit" value="us" onchange="handleUnitChange()"> US (6 in)
+            </label>
+        </div>
+        <div class="timer" id="timerDisplay">0.0s</div>
+    </div>
+
+    <canvas id="rulerCanvas" width="840" height="150"></canvas>
+
+    <div class="input-area">
+        <label id="inputLabel" style="font-weight: bold;">What is the measurement?</label>
+        <div class="input-group">
+            <input type="text" id="answerInput" placeholder="" autocomplete="off">
+            <button id="submitBtn" onclick="checkAnswer()">Submit</button>
+            <button id="nextBtn" onclick="generateQuestion()" style="display: none; background-color: var(--success);">Next</button>
+        </div>
+        <div class="instructions" id="instructions"></div>
+    </div>
+
+    <div id="feedback"></div>
+
+    <div class="stats-grid">
+        <div class="stat-box">
+            <h4>Total Attempts</h4>
+            <p id="statTotal">0</p>
+        </div>
+        <div class="stat-box">
+            <h4>Correct</h4>
+            <p id="statCorrect" style="color: var(--success);">0</p>
+        </div>
+        <div class="stat-box">
+            <h4>Incorrect</h4>
+            <p id="statIncorrect" style="color: var(--danger);">0</p>
+        </div>
+        <div class="stat-box">
+            <h4>Avg Time (Correct)</h4>
+            <p id="statAvgTime">0.0s</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('rulerCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Application State
+    let state = {
+        unit: 'metric', // 'metric' or 'us'
+        targetValue: 0, // stored in mm for metric, 1/16ths for US
+        startTime: 0,
+        timerInterval: null,
+        stats: {
+            total: 0,
+            correct: 0,
+            incorrect: 0,
+            correctTimes: []
+        }
+    };
+
+    const config = {
+        margin: 40,
+        rulerLength: 760, // Total drawing width in pixels
+        metricDivisions: 120, // 12 cm * 10 mm
+        usDivisions: 96       // 6 inches * 16
+    };
+
+    // Initialize
+    function init() {
+        document.getElementById('answerInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                if (document.getElementById('submitBtn').style.display !== 'none') {
+                    checkAnswer();
+                } else {
+                    generateQuestion();
+                }
+            }
+        });
+        handleUnitChange();
+    }
+
+    // Handle toggle between Metric and US
+    function handleUnitChange() {
+        const radios = document.getElementsByName('unit');
+        for (let r of radios) {
+            if (r.checked) {
+                state.unit = r.value;
+                break;
+            }
+        }
+        
+        const instructions = document.getElementById('instructions');
+        const input = document.getElementById('answerInput');
+        
+        if (state.unit === 'metric') {
+            instructions.textContent = "Format: Enter value in cm (e.g., 3.4 or 12.0)";
+            input.placeholder = "e.g., 4.2";
+        } else {
+            instructions.textContent = "Format: Enter whole number and simplified fraction (e.g., 2 1/4, 5/8, or 3)";
+            input.placeholder = "e.g., 1 3/16";
+        }
+        
+        generateQuestion();
+    }
+
+    // Generate a new random measurement
+    function generateQuestion() {
+        clearInterval(state.timerInterval);
+        
+        if (state.unit === 'metric') {
+            // Random mm between 1 and 120
+            state.targetValue = Math.floor(Math.random() * config.metricDivisions) + 1;
+        } else {
+            // Random 1/16th between 1 and 96
+            state.targetValue = Math.floor(Math.random() * config.usDivisions) + 1;
+        }
+
+        drawRuler();
+        
+        // Reset UI
+        document.getElementById('answerInput').value = '';
+        document.getElementById('answerInput').disabled = false;
+        document.getElementById('answerInput').focus();
+        document.getElementById('submitBtn').style.display = 'block';
+        document.getElementById('nextBtn').style.display = 'none';
+        document.getElementById('feedback').textContent = '';
+        
+        // Start Timer
+        state.startTime = Date.now();
+        state.timerInterval = setInterval(updateTimer, 100);
+    }
+
+    // Update the visual stopwatch
+    function updateTimer() {
+        const elapsed = (Date.now() - state.startTime) / 1000;
+        document.getElementById('timerDisplay').textContent = elapsed.toFixed(1) + 's';
+    }
+
+    // Draw the ruler and the random target indicator
+    function drawRuler() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw Ruler Body
+        ctx.fillStyle = '#fefefe';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.beginPath();
+        ctx.moveTo(config.margin, 30);
+        ctx.lineTo(config.margin + config.rulerLength, 30);
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = '#333';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+
+        let targetX = 0;
+
+        if (state.unit === 'metric') {
+            const spacing = config.rulerLength / config.metricDivisions;
+            for (let i = 0; i <= config.metricDivisions; i++) {
+                const x = config.margin + (i * spacing);
+                let tickLength = 10;
+                
+                if (i % 10 === 0) {
+                    tickLength = 30; // cm mark
+                    ctx.fillText(i / 10, x, 75);
+                } else if (i % 5 === 0) {
+                    tickLength = 20; // 5mm mark
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(x, 30);
+                ctx.lineTo(x, 30 + tickLength);
+                ctx.stroke();
+
+                if (i === state.targetValue) targetX = x;
+            }
+        } else {
+            const spacing = config.rulerLength / config.usDivisions;
+            for (let i = 0; i <= config.usDivisions; i++) {
+                const x = config.margin + (i * spacing);
+                let tickLength = 10; // 1/16th mark
+                
+                if (i % 16 === 0) {
+                    tickLength = 35; // Inch mark
+                    ctx.fillText(i / 16, x, 80);
+                } else if (i % 8 === 0) {
+                    tickLength = 25; // 1/2 inch mark
+                } else if (i % 4 === 0) {
+                    tickLength = 20; // 1/4 inch mark
+                } else if (i % 2 === 0) {
+                    tickLength = 15; // 1/8 inch mark
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(x, 30);
+                ctx.lineTo(x, 30 + tickLength);
+                ctx.stroke();
+
+                if (i === state.targetValue) targetX = x;
+            }
+        }
+
+        // Draw Target Indicator (Red Arrow)
+        ctx.fillStyle = 'rgba(220, 38, 38, 0.2)';
+        ctx.fillRect(config.margin, 30, targetX - config.margin, 50);
+
+        ctx.beginPath();
+        ctx.moveTo(targetX, 130);
+        ctx.lineTo(targetX - 8, 115);
+        ctx.lineTo(targetX + 8, 115);
+        ctx.closePath();
+        ctx.fillStyle = 'var(--danger)';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(targetX, 115);
+        ctx.lineTo(targetX, 30);
+        ctx.strokeStyle = 'var(--danger)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+
+    // Evaluate user input
+    function checkAnswer() {
+        const inputVal = document.getElementById('answerInput').value.trim();
+        if (!inputVal) return;
+
+        clearInterval(state.timerInterval);
+        const timeTaken = (Date.now() - state.startTime) / 1000;
+        
+        let isCorrect = false;
+        let correctAnswerString = "";
+
+        if (state.unit === 'metric') {
+            const parsed = parseFloat(inputVal);
+            const expectedCm = state.targetValue / 10;
+            correctAnswerString = expectedCm.toFixed(1) + " cm";
+            
+            // Check if input equals exactly what's expected (e.g. 4.2)
+            if (!isNaN(parsed) && Math.abs(parsed - expectedCm) < 0.01) {
+                isCorrect = true;
+            }
+        } else {
+            const parsedSixteenths = parseUsInput(inputVal);
+            correctAnswerString = getUsFractionString(state.targetValue) + " in";
+
+            if (parsedSixteenths === state.targetValue) {
+                isCorrect = true;
+            }
+        }
+
+        // Update State & Stats
+        state.stats.total++;
+        const feedbackEl = document.getElementById('feedback');
+
+        if (isCorrect) {
+            state.stats.correct++;
+            state.stats.correctTimes.push(timeTaken);
+            feedbackEl.innerHTML = `<span class="correct">Correct!</span> The measurement is ${correctAnswerString}. Time: ${timeTaken.toFixed(1)}s`;
+        } else {
+            state.stats.incorrect++;
+            feedbackEl.innerHTML = `<span class="incorrect">Incorrect.</span> You entered "${inputVal}", but the correct answer is <b>${correctAnswerString}</b>.`;
+        }
+
+        updateStatsUI();
+
+        // Toggle Buttons
+        document.getElementById('answerInput').disabled = true;
+        document.getElementById('submitBtn').style.display = 'none';
+        document.getElementById('nextBtn').style.display = 'block';
+        document.getElementById('nextBtn').focus();
+    }
+
+    // Helper: Parse US string inputs (e.g., "1 3/16", "5/8", "2") into 1/16ths
+    function parseUsInput(input) {
+        // Replace dashes with spaces just in case user typed "1-3/16"
+        let cleanInput = input.replace(/-/g, ' ').trim().replace(/\s+/g, ' ');
+        let parts = cleanInput.split(' ');
+        
+        let whole = 0;
+        let fractionStr = "0/1";
+
+        if (parts.length === 2) {
+            whole = parseInt(parts[0], 10);
+            fractionStr = parts[1];
+        } else if (parts.length === 1) {
+            if (parts[0].includes('/')) {
+                fractionStr = parts[0];
+            } else {
+                whole = parseInt(parts[0], 10);
+            }
+        } else {
+            return -1; // Invalid format
+        }
+
+        let fracParts = fractionStr.split('/');
+        let num = 0, den = 1;
+
+        if (fracParts.length === 2) {
+            num = parseInt(fracParts[0], 10);
+            den = parseInt(fracParts[1], 10);
+        }
+
+        if (isNaN(whole) || isNaN(num) || isNaN(den) || den === 0) return -1;
+        
+        // Convert to sixteenths
+        return (whole * 16) + (num * (16 / den));
+    }
+
+    // Helper: Get formatted fraction string from sixteenths
+    function getUsFractionString(sixteenths) {
+        const whole = Math.floor(sixteenths / 16);
+        let rem = sixteenths % 16;
+        
+        if (rem === 0) return `${whole}`;
+        
+        let den = 16;
+        // Simplify fraction
+        while (rem % 2 === 0 && den > 1) {
+            rem /= 2;
+            den /= 2;
+        }
+
+        if (whole === 0) return `${rem}/${den}`;
+        return `${whole} ${rem}/${den}`;
+    }
+
+    // Update Statistics Table
+    function updateStatsUI() {
+        document.getElementById('statTotal').textContent = state.stats.total;
+        document.getElementById('statCorrect').textContent = state.stats.correct;
+        document.getElementById('statIncorrect').textContent = state.stats.incorrect;
+
+        if (state.stats.correctTimes.length > 0) {
+            const sum = state.stats.correctTimes.reduce((a, b) => a + b, 0);
+            const avg = sum / state.stats.correctTimes.length;
+            document.getElementById('statAvgTime').textContent = avg.toFixed(1) + 's';
+        }
+    }
+
+    // Boot up
+    window.onload = init;
+</script>
+
+</body>
+</html>
