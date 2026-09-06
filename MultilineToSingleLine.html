@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiline to Single Line</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            box-sizing: border-box;
+            padding: 10px;
+            font-size: 16px;
+            resize: vertical;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Multiline → Single Line</h1>
+
+    <textarea
+        id="input"
+        placeholder="Paste multiline text here..."
+    ></textarea>
+
+    <p id="copied"></p>
+
+    <script>
+        const input = document.getElementById("input");
+
+        input.addEventListener("paste", function (event) {
+            // Get the pasted text
+            const pastedText = event.clipboardData.getData("text");
+
+            // Convert multiline text into a single line
+            const singleLine = pastedText
+                .replace(/\r?\n|\r/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+
+            // Copy the single-line text to the clipboard
+            navigator.clipboard.writeText(singleLine);
+
+            // Prevent the browser from performing the normal paste
+            event.preventDefault();
+
+            // Insert the converted text
+            document.getElementById("input").value = "";
+            document.getElementById("copied").innerHTML = "<b>Copied to clipboard: </b>" + singleLine;
+        });
+    </script>
+
+</body>
+</html>
