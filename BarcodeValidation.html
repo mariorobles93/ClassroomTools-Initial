@@ -1,0 +1,2417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Barcode Validator</title>
+
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --text: #17202a;
+      --muted: #68737d;
+      --green: #16803c;
+      --green-bg: #e8f7ed;
+      --red: #c62828;
+      --red-bg: #fdeaea;
+      --orange: #b26a00;
+      --orange-bg: #fff4df;
+      --border: #d9dee3;
+      --blue: #1769aa;
+      --blue-dark: #0f4f80;
+      --gray-button: #68737d;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 30px 20px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      margin: auto;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 30px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, .08);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    .subtitle {
+      margin: 0 0 25px;
+      color: var(--muted);
+    }
+
+    /* =========================================================
+       MODE SELECTOR
+       ========================================================= */
+
+    .mode-selector {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 30px;
+      padding: 5px;
+      background: #eef1f4;
+      border-radius: 10px;
+    }
+
+    .mode-button {
+      min-height: 46px;
+      padding: 10px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--text);
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .mode-button.active {
+      background: var(--blue);
+      color: white;
+    }
+
+    /* =========================================================
+       FORMS
+       ========================================================= */
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-width: 0;
+      padding: 13px 14px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 16px;
+      outline: none;
+      background: white;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--blue);
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 12px 20px;
+      background: var(--blue);
+      color: white;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      filter: brightness(.92);
+    }
+
+    button.secondary {
+      background: var(--gray-button);
+    }
+
+    button.success {
+      background: var(--green);
+    }
+
+    button.warning {
+      background: var(--orange);
+    }
+
+    button.danger {
+      background: var(--red);
+    }
+
+    /* =========================================================
+       MODE PANELS
+       ========================================================= */
+
+    .mode-panel {
+      display: none;
+    }
+
+    .mode-panel.active {
+      display: block;
+    }
+
+    /* =========================================================
+       RESULTS
+       ========================================================= */
+
+    .result {
+      display: none;
+      margin-top: 25px;
+      padding: 22px;
+      border-radius: 10px;
+    }
+
+    .result.valid {
+      display: block;
+      background: var(--green-bg);
+      border: 1px solid #b9e4c7;
+      color: var(--green);
+    }
+
+    .result.invalid {
+      display: block;
+      background: var(--red-bg);
+      border: 1px solid #f1bcbc;
+      color: var(--red);
+    }
+
+    .result.used {
+      display: block;
+      background: var(--orange-bg);
+      border: 1px solid #efd19a;
+      color: var(--orange);
+    }
+
+    .result h2 {
+      margin: 0 0 15px;
+      font-size: 22px;
+    }
+
+    .details {
+      color: var(--text);
+      display: grid;
+      gap: 8px;
+    }
+
+    .details strong {
+      display: inline-block;
+      min-width: 110px;
+    }
+
+    .result-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    /* =========================================================
+       INFORMATION FORM
+       ========================================================= */
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .form-group.full {
+      grid-column: 1 / -1;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    /* =========================================================
+       DATA TABLE
+       ========================================================= */
+
+    .table-section {
+      margin-top: 30px;
+    }
+
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 650px;
+    }
+
+    th,
+    td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: #f1f3f5;
+      font-size: 14px;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 9px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .status-badge.valid {
+      color: var(--green);
+      background: var(--green-bg);
+    }
+
+    .status-badge.used {
+      color: var(--orange);
+      background: var(--orange-bg);
+    }
+
+    .empty-state {
+      padding: 30px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    /* =========================================================
+       IMPORT / EXPORT
+       ========================================================= */
+
+    .data-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .import-info {
+      margin-top: 15px;
+      padding: 14px;
+      background: #f1f6fa;
+      border-left: 4px solid var(--blue);
+      color: var(--muted);
+      border-radius: 5px;
+    }
+
+    /* =========================================================
+       STATS
+       ========================================================= */
+
+    .stats {
+      margin-top: 25px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .stat {
+      text-align: center;
+      padding: 12px;
+      background: #f6f7f8;
+      border-radius: 8px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 22px;
+      color: var(--text);
+      margin-top: 4px;
+    }
+
+    /* =========================================================
+       MODAL
+       ========================================================= */
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0, 0, 0, .55);
+      padding: 20px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 650px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: white;
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 15px 50px rgba(0, 0, 0, .25);
+    }
+
+    .modal h2 {
+      margin-top: 0;
+    }
+
+    .csv-example {
+      margin: 15px 0;
+      padding: 15px;
+      background: #1e252b;
+      color: #f1f1f1;
+      border-radius: 7px;
+      overflow-x: auto;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      white-space: pre;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    /* =========================================================
+       EXAMPLE MODE
+       ========================================================= */
+
+    .example-banner {
+      margin-bottom: 20px;
+      padding: 14px;
+      background: #eef5fb;
+      border: 1px solid #c9dff0;
+      border-radius: 8px;
+      color: var(--blue-dark);
+    }
+
+    /* =========================================================
+       RESPONSIVE
+       ========================================================= */
+
+    @media (max-width: 600px) {
+      body {
+        padding: 15px;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      .mode-selector {
+        grid-template-columns: 1fr;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-group.full {
+        grid-column: auto;
+      }
+
+      .input-row {
+        flex-direction: column;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<main class="container">
+
+  <section class="card">
+
+    <h1>Barcode Validator</h1>
+
+    <p class="subtitle">
+      Validate, manage, import, and export barcode information.
+    </p>
+
+    <!-- =======================================================
+         MODE SELECTOR
+         ======================================================= -->
+
+    <div class="mode-selector">
+
+      <button
+        class="mode-button active"
+        data-mode="validation">
+        Validation
+      </button>
+
+      <button
+        class="mode-button"
+        data-mode="information">
+        Details
+      </button>
+
+      <button
+        class="mode-button"
+        data-mode="example">
+        Sample Mode
+      </button>
+
+    </div>
+
+
+    <!-- =======================================================
+         VALIDATION MODE
+         ======================================================= -->
+
+    <section
+      id="validationMode"
+      class="mode-panel active">
+
+      <form id="barcodeForm">
+
+        <label for="barcode">
+          Barcode
+        </label>
+
+        <div class="input-row">
+
+          <input
+            id="barcode"
+            name="barcode"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder="Enter or scan barcode..."
+            autofocus
+            required
+          >
+
+          <button type="submit">
+            Check
+          </button>
+
+        </div>
+
+      </form>
+
+      <div
+        id="result"
+        class="result">
+      </div>
+
+      <div class="stats">
+
+        <div class="stat">
+          Total Codes
+          <strong id="totalCodes">0</strong>
+        </div>
+
+        <div class="stat">
+          Valid
+          <strong id="validCodes">0</strong>
+        </div>
+
+        <div class="stat">
+          Used
+          <strong id="usedCodes">0</strong>
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =======================================================
+         INFORMATION MODE
+         ======================================================= -->
+
+    <section
+      id="informationMode"
+      class="mode-panel">
+
+      <h2>Manage Codes</h2>
+
+      <form id="informationForm">
+
+        <div class="form-grid">
+
+          <div class="form-group">
+
+            <label for="infoBarcode">
+              Barcode
+            </label>
+
+            <input
+              id="infoBarcode"
+              type="text"
+              inputmode="numeric"
+              placeholder="Example: 10000001"
+              required
+            >
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="infoStatus">
+              Status
+            </label>
+
+            <select id="infoStatus">
+
+              <option value="valid">
+                Valid
+              </option>
+
+              <option value="used">
+                Used
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="infoName">
+              Name
+            </label>
+
+            <input
+              id="infoName"
+              type="text"
+              placeholder="John Smith"
+              required
+            >
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="infoCompanion">
+              Companion
+            </label>
+
+            <input
+              id="infoCompanion"
+              type="text"
+              placeholder="None"
+            >
+
+          </div>
+
+        </div>
+
+        <div class="form-actions">
+
+          <button type="submit">
+            Add / Update Code
+          </button>
+
+          <button
+            type="button"
+            class="secondary"
+            id="clearInformationForm">
+            Clear
+          </button>
+
+        </div>
+
+      </form>
+
+
+      <div class="table-section">
+
+        <div class="table-header">
+
+          <h2>Current Codes</h2>
+
+          <div class="data-actions">
+
+            <button
+              type="button"
+              id="exportCsv">
+              Export CSV
+            </button>
+
+            <button
+              type="button"
+              class="secondary"
+              id="showImportDialog">
+              Import CSV
+            </button>
+
+            <input
+              type="file"
+              id="csvFile"
+              accept=".csv,text/csv"
+              hidden
+            >
+
+          </div>
+
+        </div>
+
+        <div class="import-info">
+
+          <strong>CSV Format:</strong>
+          barcode, name, companion, status
+
+          <br>
+
+          Status must be either
+          <strong>valid</strong>
+          or
+          <strong>used</strong>.
+
+        </div>
+
+        <div class="table-wrapper">
+
+          <table>
+
+            <thead>
+
+              <tr>
+                <th>Barcode</th>
+                <th>Name</th>
+                <th>Companion</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+
+            </thead>
+
+            <tbody id="codeTableBody">
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =======================================================
+         EXAMPLE MODE
+         ======================================================= -->
+
+    <section
+      id="exampleMode"
+      class="mode-panel">
+
+      <div class="example-banner">
+
+        <strong>Example Mode</strong>
+
+        <br>
+
+        This mode uses dummy data and does not modify your
+        current code list.
+
+      </div>
+
+      <form id="exampleForm">
+
+        <label for="exampleBarcode">
+          Example Barcode
+        </label>
+
+        <div class="input-row">
+
+          <input
+            id="exampleBarcode"
+            type="text"
+            placeholder="Try 90000001"
+            autocomplete="off"
+          >
+
+          <button type="submit">
+            Check Example
+          </button>
+
+        </div>
+
+      </form>
+
+      <div
+        id="exampleResult"
+        class="result">
+      </div>
+
+      <div class="table-section">
+
+        <h2>Example Data</h2>
+
+        <div class="table-wrapper">
+
+          <table>
+
+            <thead>
+
+              <tr>
+                <th>Barcode</th>
+                <th>Name</th>
+                <th>Companion</th>
+                <th>Status</th>
+              </tr>
+
+            </thead>
+
+            <tbody id="exampleTableBody">
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </section>
+
+</main>
+
+
+<!-- ===========================================================
+     IMPORT CSV MODAL
+     =========================================================== -->
+
+<div
+  id="importModal"
+  class="modal-overlay">
+
+  <div class="modal">
+
+    <h2>Import CSV</h2>
+
+    <p>
+      Your CSV file should contain one barcode per row using
+      the following columns:
+    </p>
+
+    <div class="csv-example">barcode,name,companion,status
+10000001,John Smith,None,valid
+10000002,Jane Doe,Michael,valid
+10000003,Robert Johnson,None,used</div>
+
+    <h3>Column Information</h3>
+
+    <ul>
+
+      <li>
+        <strong>barcode</strong> -
+        numeric barcode value
+      </li>
+
+      <li>
+        <strong>name</strong> -
+        person's name
+      </li>
+
+      <li>
+        <strong>companion</strong> -
+        companion name or "None"
+      </li>
+
+      <li>
+        <strong>status</strong> -
+        either <strong>valid</strong> or <strong>used</strong>
+      </li>
+
+    </ul>
+
+    <p>
+      Importing a CSV will replace the current code list.
+      Existing data will not be deleted until the import
+      is successfully processed.
+    </p>
+
+    <div class="modal-actions">
+
+      <button
+        type="button"
+        class="secondary"
+        id="cancelImport">
+        Cancel
+      </button>
+
+      <button
+        type="button"
+        id="chooseImportFile">
+        Choose CSV File
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+/* =============================================================
+   APPLICATION DATA
+   ============================================================= */
+
+/*
+ * This is the application's current code list.
+ *
+ * In a production application this could instead be populated
+ * from a database or API.
+ */
+let codes = [];
+
+
+/* =============================================================
+   EXAMPLE DATA
+   ============================================================= */
+
+const exampleCodes = [
+  {
+    barcode: "90000001",
+    name: "Alice Example",
+    companion: "Bob Example",
+    status: "valid"
+  },
+  {
+    barcode: "90000002",
+    name: "John Example",
+    companion: "None",
+    status: "valid"
+  },
+  {
+    barcode: "90000003",
+    name: "Sarah Example",
+    companion: "Mike Example",
+    status: "used"
+  },
+  {
+    barcode: "90000004",
+    name: "David Example",
+    companion: "None",
+    status: "valid"
+  },
+  {
+    barcode: "90000005",
+    name: "Emily Example",
+    companion: "James Example",
+    status: "used"
+  }
+];
+
+
+/* =============================================================
+   ELEMENTS
+   ============================================================= */
+
+const modeButtons =
+  document.querySelectorAll(".mode-button");
+
+const validationMode =
+  document.getElementById("validationMode");
+
+const informationMode =
+  document.getElementById("informationMode");
+
+const exampleMode =
+  document.getElementById("exampleMode");
+
+const barcodeForm =
+  document.getElementById("barcodeForm");
+
+const barcodeInput =
+  document.getElementById("barcode");
+
+const result =
+  document.getElementById("result");
+
+const totalCodes =
+  document.getElementById("totalCodes");
+
+const validCodes =
+  document.getElementById("validCodes");
+
+const usedCodes =
+  document.getElementById("usedCodes");
+
+const informationForm =
+  document.getElementById("informationForm");
+
+const codeTableBody =
+  document.getElementById("codeTableBody");
+
+const exampleTableBody =
+  document.getElementById("exampleTableBody");
+
+const exampleForm =
+  document.getElementById("exampleForm");
+
+const exampleBarcode =
+  document.getElementById("exampleBarcode");
+
+const exampleResult =
+  document.getElementById("exampleResult");
+
+const importModal =
+  document.getElementById("importModal");
+
+const csvFile =
+  document.getElementById("csvFile");
+
+
+/* =============================================================
+   MODE SWITCHING
+   ============================================================= */
+
+modeButtons.forEach(button => {
+
+  button.addEventListener("click", () => {
+
+    const mode = button.dataset.mode;
+
+    modeButtons.forEach(item => {
+      item.classList.remove("active");
+    });
+
+    button.classList.add("active");
+
+    validationMode.classList.remove("active");
+    informationMode.classList.remove("active");
+    exampleMode.classList.remove("active");
+
+    if (mode === "validation") {
+
+      validationMode.classList.add("active");
+
+      setTimeout(() => {
+        barcodeInput.focus();
+      }, 50);
+
+    }
+
+    if (mode === "information") {
+
+      informationMode.classList.add("active");
+
+      renderCodeTable();
+
+    }
+
+    if (mode === "example") {
+
+      exampleMode.classList.add("active");
+
+      renderExampleTable();
+
+      setTimeout(() => {
+        exampleBarcode.focus();
+      }, 50);
+
+    }
+
+  });
+
+});
+
+
+/* =============================================================
+   VALIDATION MODE
+   ============================================================= */
+
+barcodeForm.addEventListener("submit", event => {
+
+  event.preventDefault();
+
+  const barcode =
+    barcodeInput.value.trim();
+
+  if (!barcode) {
+
+    showResult(
+      "invalid",
+      `
+        <h2>✗ INVALID</h2>
+
+        <div class="details">
+          Please enter a barcode.
+        </div>
+      `
+    );
+
+    return;
+  }
+
+
+  if (!/^[0-9]+$/.test(barcode)) {
+
+    showResult(
+      "invalid",
+      `
+        <h2>✗ INVALID</h2>
+
+        <div class="details">
+          Barcode must contain numbers only.
+        </div>
+      `
+    );
+
+    barcodeInput.select();
+
+    return;
+  }
+
+
+  validateBarcode(barcode);
+
+  barcodeInput.select();
+
+});
+
+
+/*
+ * Validates a barcode WITHOUT changing its status.
+ */
+function validateBarcode(barcode) {
+
+  const code =
+    codes.find(item => item.barcode === barcode);
+
+
+  /*
+   * Barcode does not exist.
+   */
+  if (!code) {
+
+    showResult(
+      "invalid",
+      `
+        <h2>✗ INVALID</h2>
+
+        <div class="details">
+
+          <div>
+            <strong>Barcode:</strong>
+            ${escapeHtml(barcode)}
+          </div>
+
+          <div>
+            This barcode was not found
+            in the current code list.
+          </div>
+
+        </div>
+      `
+    );
+
+    return;
+  }
+
+
+  /*
+   * Barcode has already been used.
+   */
+  if (code.status === "used") {
+
+    showResult(
+      "used",
+      `
+        <h2>⚠ ALREADY USED</h2>
+
+        <div class="details">
+
+          <div>
+            <strong>Barcode:</strong>
+            ${escapeHtml(code.barcode)}
+          </div>
+
+          <div>
+            <strong>Name:</strong>
+            ${escapeHtml(code.name)}
+          </div>
+
+          <div>
+            <strong>Companion:</strong>
+            ${escapeHtml(code.companion)}
+          </div>
+
+          <div>
+            <strong>Status:</strong>
+            <span class="status-badge used">
+              USED
+            </span>
+          </div>
+
+        </div>
+      `
+    );
+
+    return;
+  }
+
+
+  /*
+   * Barcode is valid.
+   *
+   * IMPORTANT:
+   * We do NOT change the status here.
+   *
+   * The user must explicitly click the
+   * "Change Status to Used" button.
+   */
+  showResult(
+    "valid",
+    `
+      <h2>✓ VALID</h2>
+
+      <div class="details">
+
+        <div>
+          <strong>Barcode:</strong>
+          ${escapeHtml(code.barcode)}
+        </div>
+
+        <div>
+          <strong>Name:</strong>
+          ${escapeHtml(code.name)}
+        </div>
+
+        <div>
+          <strong>Companion:</strong>
+          ${escapeHtml(code.companion)}
+        </div>
+
+        <div>
+          <strong>Status:</strong>
+          <span class="status-badge valid">
+            VALID
+          </span>
+        </div>
+
+      </div>
+
+      <div class="result-actions">
+
+        <button
+          type="button"
+          class="warning"
+          onclick="markCodeUsed('${escapeAttribute(code.barcode)}')">
+
+          Change Status to Used
+
+        </button>
+
+      </div>
+    `
+  );
+
+}
+
+
+/*
+ * Explicitly changes a valid code to USED.
+ */
+function markCodeUsed(barcode) {
+
+  const code =
+    codes.find(item => item.barcode === barcode);
+
+  if (!code) {
+    return;
+  }
+
+
+  if (code.status === "used") {
+
+    showResult(
+      "used",
+      `
+        <h2>⚠ ALREADY USED</h2>
+
+        <div class="details">
+          This barcode has already been used.
+        </div>
+      `
+    );
+
+    return;
+  }
+
+
+  /*
+   * Change the status only after the user
+   * explicitly requested it.
+   */
+  code.status = "used";
+
+
+  showResult(
+    "used",
+    `
+      <h2>✓ STATUS CHANGED</h2>
+
+      <div class="details">
+
+        <div>
+          <strong>Barcode:</strong>
+          ${escapeHtml(code.barcode)}
+        </div>
+
+        <div>
+          <strong>Name:</strong>
+          ${escapeHtml(code.name)}
+        </div>
+
+        <div>
+          <strong>Companion:</strong>
+          ${escapeHtml(code.companion)}
+        </div>
+
+        <div>
+          <strong>Status:</strong>
+          <span class="status-badge used">
+            USED
+          </span>
+        </div>
+
+      </div>
+    `
+  );
+
+
+  updateStatistics();
+  renderCodeTable();
+}
+
+
+/* =============================================================
+   INFORMATION MODE
+   ============================================================= */
+
+informationForm.addEventListener("submit", event => {
+
+  event.preventDefault();
+
+  const barcode =
+    document.getElementById("infoBarcode")
+      .value.trim();
+
+  const name =
+    document.getElementById("infoName")
+      .value.trim();
+
+  const companion =
+    document.getElementById("infoCompanion")
+      .value.trim() || "None";
+
+  const status =
+    document.getElementById("infoStatus")
+      .value;
+
+
+  if (!/^[0-9]+$/.test(barcode)) {
+
+    alert("Barcode must contain numbers only.");
+
+    return;
+  }
+
+
+  if (!name) {
+
+    alert("Name is required.");
+
+    return;
+  }
+
+
+  /*
+   * Check whether the barcode already exists.
+   */
+  const existing =
+    codes.find(item => item.barcode === barcode);
+
+
+  if (existing) {
+
+    /*
+     * Update existing record.
+     */
+    existing.name = name;
+    existing.companion = companion;
+    existing.status = status;
+
+  } else {
+
+    /*
+     * Add a new record.
+     */
+    codes.push({
+      barcode,
+      name,
+      companion,
+      status
+    });
+
+  }
+
+
+  clearInformationForm();
+
+  renderCodeTable();
+  updateStatistics();
+
+});
+
+
+/*
+ * Clear the information form.
+ */
+function clearInformationForm() {
+
+  document.getElementById("infoBarcode").value = "";
+  document.getElementById("infoName").value = "";
+  document.getElementById("infoCompanion").value = "";
+  document.getElementById("infoStatus").value = "valid";
+
+}
+
+
+document
+  .getElementById("clearInformationForm")
+  .addEventListener("click", clearInformationForm);
+
+
+/* =============================================================
+   CODE TABLE
+   ============================================================= */
+
+function renderCodeTable() {
+
+  codeTableBody.innerHTML = "";
+
+
+  if (codes.length === 0) {
+
+    codeTableBody.innerHTML = `
+      <tr>
+        <td
+          colspan="5"
+          class="empty-state">
+
+          No codes have been added.
+
+        </td>
+      </tr>
+    `;
+
+    return;
+  }
+
+
+  codes.forEach(code => {
+
+    const row =
+      document.createElement("tr");
+
+
+    row.innerHTML = `
+
+      <td>
+        ${escapeHtml(code.barcode)}
+      </td>
+
+      <td>
+        ${escapeHtml(code.name)}
+      </td>
+
+      <td>
+        ${escapeHtml(code.companion)}
+      </td>
+
+      <td>
+
+        <span class="status-badge ${code.status}">
+          ${code.status.toUpperCase()}
+        </span>
+
+      </td>
+
+      <td>
+
+        <button
+          type="button"
+          class="secondary"
+          onclick="editCode('${escapeAttribute(code.barcode)}')">
+
+          Edit
+
+        </button>
+
+      </td>
+
+    `;
+
+    codeTableBody.appendChild(row);
+
+  });
+
+}
+
+
+/*
+ * Load a code into the information form for editing.
+ */
+function editCode(barcode) {
+
+  const code =
+    codes.find(item => item.barcode === barcode);
+
+  if (!code) {
+    return;
+  }
+
+
+  document.getElementById("infoBarcode").value =
+    code.barcode;
+
+  document.getElementById("infoName").value =
+    code.name;
+
+  document.getElementById("infoCompanion").value =
+    code.companion;
+
+  document.getElementById("infoStatus").value =
+    code.status;
+
+
+  document
+    .getElementById("infoBarcode")
+    .focus();
+
+}
+
+
+/* =============================================================
+   STATISTICS
+   ============================================================= */
+
+function updateStatistics() {
+
+  const total =
+    codes.length;
+
+  const used =
+    codes.filter(
+      code => code.status === "used"
+    ).length;
+
+  const valid =
+    codes.filter(
+      code => code.status === "valid"
+    ).length;
+
+
+  totalCodes.textContent = total;
+  validCodes.textContent = valid;
+  usedCodes.textContent = used;
+
+}
+
+
+/* =============================================================
+   CSV EXPORT
+   ============================================================= */
+
+document
+  .getElementById("exportCsv")
+  .addEventListener("click", exportCsv);
+
+
+function exportCsv() {
+
+  if (codes.length === 0) {
+
+    alert("There are no codes to export.");
+
+    return;
+  }
+
+
+  const headers = [
+    "barcode",
+    "name",
+    "companion",
+    "status"
+  ];
+
+
+  const rows = codes.map(code => [
+
+    csvEscape(code.barcode),
+    csvEscape(code.name),
+    csvEscape(code.companion),
+    csvEscape(code.status)
+
+  ].join(","));
+
+
+  const csv =
+    headers.join(",") +
+    "\n" +
+    rows.join("\n");
+
+
+  const blob =
+    new Blob(
+      [csv],
+      {
+        type: "text/csv;charset=utf-8;"
+      }
+    );
+
+
+  const url =
+    URL.createObjectURL(blob);
+
+
+  const link =
+    document.createElement("a");
+
+  link.href = url;
+
+  link.download =
+    "barcode-codes.csv";
+
+  document.body.appendChild(link);
+
+  link.click();
+
+  document.body.removeChild(link);
+
+  URL.revokeObjectURL(url);
+
+}
+
+
+/*
+ * Escape values for CSV.
+ */
+function csvEscape(value) {
+
+  const stringValue =
+    String(value ?? "");
+
+  /*
+   * Values containing commas, quotes,
+   * or newlines must be quoted.
+   */
+  if (
+    stringValue.includes(",") ||
+    stringValue.includes('"') ||
+    stringValue.includes("\n")
+  ) {
+
+    return '"' +
+      stringValue.replace(/"/g, '""') +
+      '"';
+
+  }
+
+  return stringValue;
+}
+
+
+/* =============================================================
+   CSV IMPORT
+   ============================================================= */
+
+document
+  .getElementById("showImportDialog")
+  .addEventListener("click", () => {
+
+    importModal.classList.add("active");
+
+  });
+
+
+document
+  .getElementById("cancelImport")
+  .addEventListener("click", () => {
+
+    importModal.classList.remove("active");
+
+  });
+
+
+document
+  .getElementById("chooseImportFile")
+  .addEventListener("click", () => {
+
+    csvFile.click();
+
+  });
+
+
+/*
+ * When a CSV is selected, process it.
+ */
+csvFile.addEventListener("change", event => {
+
+  const file =
+    event.target.files[0];
+
+  if (!file) {
+    return;
+  }
+
+
+  const reader =
+    new FileReader();
+
+
+  reader.onload = function(event) {
+
+    try {
+
+      const importedCodes =
+        parseCsv(event.target.result);
+
+
+      if (importedCodes.length === 0) {
+
+        throw new Error(
+          "No valid records were found."
+        );
+
+      }
+
+
+      /*
+       * Replace current data only after
+       * successful parsing.
+       */
+      codes = importedCodes;
+
+
+      importModal.classList.remove("active");
+
+      renderCodeTable();
+
+      updateStatistics();
+
+
+      alert(
+        `Successfully imported ${codes.length} code(s).`
+      );
+
+
+    } catch (error) {
+
+      alert(
+        "CSV Import Failed:\n\n" +
+        error.message
+      );
+
+    }
+
+
+    /*
+     * Reset file input so the same file
+     * can be selected again.
+     */
+    csvFile.value = "";
+
+  };
+
+
+  reader.readAsText(file);
+
+});
+
+
+/* =============================================================
+   CSV PARSER
+   ============================================================= */
+
+/*
+ * Parses CSV including quoted fields containing commas.
+ */
+function parseCsv(text) {
+
+  const rows =
+    parseCsvRows(text);
+
+
+  if (rows.length < 2) {
+
+    throw new Error(
+      "CSV must contain a header row and at least one data row."
+    );
+
+  }
+
+
+  const headers =
+    rows[0].map(
+      header => header.trim().toLowerCase()
+    );
+
+
+  const requiredColumns = [
+    "barcode",
+    "name",
+    "companion",
+    "status"
+  ];
+
+
+  /*
+   * Make sure every required column exists.
+   */
+  requiredColumns.forEach(column => {
+
+    if (!headers.includes(column)) {
+
+      throw new Error(
+        `Missing required column: ${column}`
+      );
+
+    }
+
+  });
+
+
+  const imported = [];
+
+
+  for (let i = 1; i < rows.length; i++) {
+
+    /*
+     * Skip completely empty rows.
+     */
+    if (
+      rows[i].every(
+        value => value.trim() === ""
+      )
+    ) {
+      continue;
+    }
+
+
+    const row =
+      rows[i];
+
+
+    const getValue =
+      column => {
+
+        const index =
+          headers.indexOf(column);
+
+        return (
+          row[index] !== undefined
+            ? row[index].trim()
+            : ""
+        );
+
+      };
+
+
+    const barcode =
+      getValue("barcode");
+
+    const name =
+      getValue("name");
+
+    const companion =
+      getValue("companion") || "None";
+
+    const status =
+      getValue("status").toLowerCase();
+
+
+    /*
+     * Validate barcode.
+     */
+    if (!/^[0-9]+$/.test(barcode)) {
+
+      throw new Error(
+        `Invalid barcode on row ${i + 1}: ${barcode}`
+      );
+
+    }
+
+
+    /*
+     * Validate status.
+     */
+    if (
+      status !== "valid" &&
+      status !== "used"
+    ) {
+
+      throw new Error(
+        `Invalid status on row ${i + 1}. ` +
+        `Status must be "valid" or "used".`
+      );
+
+    }
+
+
+    /*
+     * Validate name.
+     */
+    if (!name) {
+
+      throw new Error(
+        `Missing name on row ${i + 1}.`
+      );
+
+    }
+
+
+    /*
+     * Prevent duplicate barcodes.
+     */
+    if (
+      imported.some(
+        item => item.barcode === barcode
+      )
+    ) {
+
+      throw new Error(
+        `Duplicate barcode found: ${barcode}`
+      );
+
+    }
+
+
+    imported.push({
+      barcode,
+      name,
+      companion,
+      status
+    });
+
+  }
+
+
+  return imported;
+
+}
+
+
+/*
+ * Basic CSV row parser supporting:
+ *
+ * - commas
+ * - quoted values
+ * - commas inside quoted values
+ * - escaped quotes
+ * - line breaks
+ */
+function parseCsvRows(text) {
+
+  const rows = [];
+
+  let row = [];
+
+  let value = "";
+
+  let insideQuotes = false;
+
+
+  for (let i = 0; i < text.length; i++) {
+
+    const char =
+      text[i];
+
+    const next =
+      text[i + 1];
+
+
+    if (char === '"') {
+
+      if (
+        insideQuotes &&
+        next === '"'
+      ) {
+
+        value += '"';
+
+        i++;
+
+      } else {
+
+        insideQuotes =
+          !insideQuotes;
+
+      }
+
+      continue;
+    }
+
+
+    if (
+      char === "," &&
+      !insideQuotes
+    ) {
+
+      row.push(value);
+
+      value = "";
+
+      continue;
+    }
+
+
+    if (
+      (char === "\n" || char === "\r") &&
+      !insideQuotes
+    ) {
+
+      /*
+       * Handle Windows CRLF.
+       */
+      if (
+        char === "\r" &&
+        next === "\n"
+      ) {
+        i++;
+      }
+
+
+      row.push(value);
+
+      value = "";
+
+
+      /*
+       * Avoid adding duplicate empty rows.
+       */
+      if (
+        row.length > 1 ||
+        row[0].trim() !== ""
+      ) {
+
+        rows.push(row);
+
+      }
+
+
+      row = [];
+
+      continue;
+    }
+
+
+    value += char;
+
+  }
+
+
+  /*
+   * Add final value/row.
+   */
+  if (
+    value.length > 0 ||
+    row.length > 0
+  ) {
+
+    row.push(value);
+
+    rows.push(row);
+
+  }
+
+
+  return rows;
+
+}
+
+
+/* =============================================================
+   EXAMPLE MODE
+   ============================================================= */
+
+function renderExampleTable() {
+
+  exampleTableBody.innerHTML = "";
+
+
+  exampleCodes.forEach(code => {
+
+    const row =
+      document.createElement("tr");
+
+
+    row.innerHTML = `
+
+      <td>
+        ${escapeHtml(code.barcode)}
+      </td>
+
+      <td>
+        ${escapeHtml(code.name)}
+      </td>
+
+      <td>
+        ${escapeHtml(code.companion)}
+      </td>
+
+      <td>
+
+        <span class="status-badge ${code.status}">
+          ${code.status.toUpperCase()}
+        </span>
+
+      </td>
+
+    `;
+
+
+    exampleTableBody.appendChild(row);
+
+  });
+
+}
+
+
+exampleForm.addEventListener(
+  "submit",
+  event => {
+
+    event.preventDefault();
+
+    const barcode =
+      exampleBarcode.value.trim();
+
+
+    if (!barcode) {
+
+      showExampleResult(
+        "invalid",
+        `
+          <h2>✗ INVALID</h2>
+
+          <div class="details">
+            Enter an example barcode.
+          </div>
+        `
+      );
+
+      return;
+    }
+
+
+    const code =
+      exampleCodes.find(
+        item => item.barcode === barcode
+      );
+
+
+    if (!code) {
+
+      showExampleResult(
+        "invalid",
+        `
+          <h2>✗ INVALID</h2>
+
+          <div class="details">
+
+            <div>
+              <strong>Barcode:</strong>
+              ${escapeHtml(barcode)}
+            </div>
+
+            <div>
+              This barcode does not exist
+              in the example data.
+            </div>
+
+          </div>
+        `
+      );
+
+      return;
+    }
+
+
+    if (code.status === "used") {
+
+      showExampleResult(
+        "used",
+        `
+          <h2>⚠ ALREADY USED</h2>
+
+          <div class="details">
+
+            <div>
+              <strong>Barcode:</strong>
+              ${escapeHtml(code.barcode)}
+            </div>
+
+            <div>
+              <strong>Name:</strong>
+              ${escapeHtml(code.name)}
+            </div>
+
+            <div>
+              <strong>Companion:</strong>
+              ${escapeHtml(code.companion)}
+            </div>
+
+          </div>
+        `
+      );
+
+      return;
+    }
+
+
+    /*
+     * Example mode also demonstrates the
+     * new explicit status-change behavior.
+     */
+    showExampleResult(
+      "valid",
+      `
+        <h2>✓ VALID EXAMPLE</h2>
+
+        <div class="details">
+
+          <div>
+            <strong>Barcode:</strong>
+            ${escapeHtml(code.barcode)}
+          </div>
+
+          <div>
+            <strong>Name:</strong>
+            ${escapeHtml(code.name)}
+          </div>
+
+          <div>
+            <strong>Companion:</strong>
+            ${escapeHtml(code.companion)}
+          </div>
+
+          <div>
+            <strong>Status:</strong>
+            <span class="status-badge valid">
+              VALID
+            </span>
+          </div>
+
+        </div>
+
+        <div class="result-actions">
+
+          <button
+            type="button"
+            class="warning"
+            onclick="markExampleCodeUsed('${escapeAttribute(code.barcode)}')">
+
+            Change Status to Used
+
+          </button>
+
+        </div>
+      `
+    );
+
+  }
+);
+
+
+/*
+ * Example-mode status change.
+ *
+ * This intentionally only modifies exampleCodes.
+ */
+function markExampleCodeUsed(barcode) {
+
+  const code =
+    exampleCodes.find(
+      item => item.barcode === barcode
+    );
+
+
+  if (!code) {
+    return;
+  }
+
+
+  code.status = "used";
+
+
+  showExampleResult(
+    "used",
+    `
+      <h2>✓ STATUS CHANGED</h2>
+
+      <div class="details">
+
+        <div>
+          <strong>Barcode:</strong>
+          ${escapeHtml(code.barcode)}
+        </div>
+
+        <div>
+          <strong>Name:</strong>
+          ${escapeHtml(code.name)}
+        </div>
+
+        <div>
+          <strong>Status:</strong>
+          <span class="status-badge used">
+            USED
+          </span>
+        </div>
+
+      </div>
+    `
+  );
+
+
+  renderExampleTable();
+
+}
+
+
+function showExampleResult(type, html) {
+
+  exampleResult.className =
+    "result " + type;
+
+  exampleResult.innerHTML =
+    html;
+
+}
+
+
+/* =============================================================
+   RESULT DISPLAY
+   ============================================================= */
+
+function showResult(type, html) {
+
+  result.className =
+    "result " + type;
+
+  result.innerHTML =
+    html;
+
+}
+
+
+/* =============================================================
+   SECURITY / HTML ESCAPING
+   ============================================================= */
+
+function escapeHtml(value) {
+
+  return String(value)
+
+    .replace(/&/g, "&amp;")
+
+    .replace(/</g, "&lt;")
+
+    .replace(/>/g, "&gt;")
+
+    .replace(/"/g, "&quot;")
+
+    .replace(/'/g, "&#039;");
+
+}
+
+
+/*
+ * Escape values being inserted into HTML attributes.
+ */
+function escapeAttribute(value) {
+
+  return String(value)
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'");
+}
+
+
+/* =============================================================
+   INITIAL DATA
+   ============================================================= */
+
+/*
+ * Create a small initial dataset so the page is immediately
+ * usable.
+ *
+ * You can remove this section if you want the real application
+ * to always begin with an empty list.
+ */
+codes = [
+  
+];
+
+
+/* =============================================================
+   INITIALIZE APPLICATION
+   ============================================================= */
+
+updateStatistics();
+
+renderCodeTable();
+
+renderExampleTable();
+
+barcodeInput.focus();
+
+</script>
+
+</body>
+</html>
