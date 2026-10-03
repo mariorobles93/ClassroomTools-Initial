@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Number Base Converter</title>
+<style>
+  :root {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color-scheme: light dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+    background: #f5f7fa;
+    color: #1f2937;
+  }
+  .app {
+    width: min(760px, 100%);
+    background: white;
+    border: 1px solid #d9dee7;
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.07);
+  }
+  h1 { margin: 0 0 6px; font-size: 1.7rem; }
+  .description { margin: 0 0 22px; color: #667085; }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 150px 46px;
+    gap: 10px;
+    align-items: end;
+    margin-bottom: 12px;
+  }
+  .input-row {
+    grid-template-columns: 1fr 150px;
+    margin-bottom: 22px;
+  }
+  label {
+    display: block;
+    font-size: .82rem;
+    font-weight: 650;
+    margin-bottom: 6px;
+    color: #475467;
+  }
+  input, select, button {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid #cbd2dc;
+    border-radius: 8px;
+    font: inherit;
+  }
+  input, select { padding: 8px 11px; background: white; color: #1f2937; }
+  #numberInput, .output {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 1rem;
+  }
+  .output {
+    background: #f8fafc;
+    overflow-x: auto;
+  }
+  .add {
+    width: 46px;
+    min-height: 44px;
+    padding: 0;
+    font-size: 1.5rem;
+    cursor: pointer;
+    background: #eef2f6;
+  }
+  .remove {
+    background: transparent;
+    border: 0;
+    color: #98a2b3;
+    cursor: pointer;
+    font-size: 1.15rem;
+    min-height: 44px;
+  }
+  .remove:hover { color: #d92d20; }
+  .status {
+    min-height: 22px;
+    margin-top: 10px;
+    font-size: .9rem;
+    color: #667085;
+  }
+  .status.error { color: #b42318; }
+  .section-title {
+    margin: 0 0 10px;
+    font-size: 1rem;
+  }
+  .hint { font-size: .8rem; color: #667085; margin-top: 16px; }
+  @media (max-width: 600px) {
+    .row { grid-template-columns: 1fr 120px 42px; }
+    .input-row { grid-template-columns: 1fr 120px; }
+    .app { padding: 18px; }
+  }
+  @media (prefers-color-scheme: dark) {
+    body { background: #111827; color: #f3f4f6; }
+    .app { background: #1f2937; border-color: #374151; }
+    .description, label, .hint, .status { color: #aeb8c5; }
+    input, select { background: #111827; color: #f3f4f6; border-color: #4b5563; }
+    .output { background: #111827; }
+    .add { background: #374151; color: #f3f4f6; border-color: #4b5563; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <h1>Number Base Converter</h1>
+  <p class="description">Convert one number from any base 2–36 to multiple bases instantly.</p>
+
+  <section>
+    <h2 class="section-title">Input</h2>
+    <div class="row input-row">
+      <div>
+        <label for="numberInput">Number</label>
+        <input id="numberInput" type="text" value="101101" spellcheck="false"
+               autocomplete="off" aria-label="Number to convert">
+      </div>
+      <div>
+        <label for="inputBase">Input base</label>
+        <select id="inputBase" aria-label="Input numerical base"></select>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Conversions</h2>
+    <div id="outputs"></div>
+    <button class="add" id="addBase" type="button" title="Add another output base"
+            aria-label="Add another output base">+</button>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+  </section>
+
+  <p class="hint">Bases use digits 0–9 and letters A–Z. Negative whole numbers are supported.</p>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  const DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const input = document.getElementById("numberInput");
+  const inputBase = document.getElementById("inputBase");
+  const outputs = document.getElementById("outputs");
+  const addBase = document.getElementById("addBase");
+  const status = document.getElementById("status");
+
+  function baseName(base) {
+    return `Base ${base}`;
+  }
+
+  function populateSelect(select, selected = 10) {
+    for (let base = 2; base <= 36; base++) {
+      const option = document.createElement("option");
+      option.value = base;
+      option.textContent = `${baseName(base)}${base === 2 ? " (Binary)" :
+        base === 8 ? " (Octal)" :
+        base === 10 ? " (Decimal)" :
+        base === 16 ? " (Hexadecimal)" :
+        base === 36 ? " (Base 36)" : ""}`;
+      select.appendChild(option);
+    }
+    select.value = selected;
+  }
+
+  function createOutputRow(base = 10) {
+    const row = document.createElement("div");
+    row.className = "row output-row";
+
+    const valueWrap = document.createElement("div");
+    const id = `output-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    const label = document.createElement("label");
+    label.htmlFor = id;
+    label.textContent = "Converted number";
+
+    const output = document.createElement("input");
+    output.id = id;
+    output.className = "output";
+    output.type = "text";
+    output.readOnly = true;
+    output.spellcheck = false;
+    output.setAttribute("aria-label", "Converted number");
+
+    valueWrap.append(label, output);
+
+    const baseWrap = document.createElement("div");
+    const baseLabel = document.createElement("label");
+    baseLabel.textContent = "Output base";
+    baseLabel.htmlFor = `${id}-base`;
+
+    const select = document.createElement("select");
+    select.id = `${id}-base`;
+    select.className = "output-base";
+    select.setAttribute("aria-label", "Output numerical base");
+    populateSelect(select, base);
+    baseWrap.append(baseLabel, select);
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "remove";
+    remove.title = "Remove this output";
+    remove.setAttribute("aria-label", "Remove this output");
+    remove.textContent = "×";
+    remove.addEventListener("click", () => {
+      row.remove();
+      update();
+    });
+
+    row.append(valueWrap, baseWrap, remove);
+    outputs.appendChild(row);
+    select.addEventListener("change", update);
+    return row;
+  }
+
+  function parseBigInt(value, base) {
+    let text = value.trim().toUpperCase();
+    if (!text) throw new Error("Enter a number.");
+
+    let negative = false;
+    if (text[0] === "+" || text[0] === "-") {
+      negative = text[0] === "-";
+      text = text.slice(1);
+    }
+    if (!text) throw new Error("Enter digits after the sign.");
+
+    for (const char of text) {
+      const digit = DIGITS.indexOf(char);
+      if (digit < 0 || digit >= base) {
+        throw new Error(`"${char}" is not valid in base ${base}.`);
+      }
+    }
+
+    let result = 0n;
+    const bigBase = BigInt(base);
+    for (const char of text) {
+      result = result * bigBase + BigInt(DIGITS.indexOf(char));
+    }
+    return negative ? -result : result;
+  }
+
+  function convert(value, fromBase, toBase) {
+    const number = parseBigInt(value, fromBase);
+    if (number === 0n) return "0";
+
+    const negative = number < 0n;
+    let n = negative ? -number : number;
+    const bigBase = BigInt(toBase);
+    let result = "";
+
+    while (n > 0n) {
+      result = DIGITS[Number(n % bigBase)] + result;
+      n /= bigBase;
+    }
+    return negative ? "-" + result : result;
+  }
+
+  function update() {
+    const fromBase = Number(inputBase.value);
+    const rows = [...document.querySelectorAll(".output-row")];
+
+    try {
+      // Validate once so every output gets the same source number.
+      parseBigInt(input.value, fromBase);
+
+      rows.forEach(row => {
+        const output = row.querySelector(".output");
+        const toBase = Number(row.querySelector(".output-base").value);
+        output.value = convert(input.value, fromBase, toBase);
+      });
+
+      status.textContent = `${rows.length} conversion${rows.length === 1 ? "" : "s"} updated.`;
+      status.className = "status";
+    } catch (error) {
+      rows.forEach(row => row.querySelector(".output").value = "");
+      status.textContent = error.message;
+      status.className = "status error";
+    }
+  }
+
+  input.addEventListener("input", update);
+  inputBase.addEventListener("change", update);
+
+  addBase.addEventListener("click", () => {
+    // Choose the first unused base, cycling if all bases are already present.
+    const used = new Set(
+      [...document.querySelectorAll(".output-base")].map(select => Number(select.value))
+    );
+    let base = 10;
+    for (let candidate = 2; candidate <= 36; candidate++) {
+      if (!used.has(candidate)) {
+        base = candidate;
+        break;
+      }
+    }
+    createOutputRow(base);
+    update();
+  });
+
+  // Start with exactly two bases: one input and one output.
+  populateSelect(inputBase, 2);
+  createOutputRow(10);
+  update();
+})();
+</script>
+</body>
+</html>
