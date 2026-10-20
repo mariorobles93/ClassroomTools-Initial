@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Number Base & Two's Complement Converter</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'Fira Code', monospace; }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        .dark ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-full flex flex-col transition-colors duration-200">
+
+    <!-- Header / Navbar -->
+    <header class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-calculator text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg tracking-tight">RadixMaster <span class="text-xs px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-semibold uppercase">Pro</span></h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Base & 8-bit Two's Complement Converter</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button id="themeToggle" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition focus:outline-none" aria-label="Toggle Theme">
+                    <i class="fa-solid fa-moon dark:hidden"></i>
+                    <i class="fa-solid fa-sun hidden dark:inline"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Left Panel: Input & Quick Reference -->
+        <div class="lg:col-span-5 space-y-6">
+            
+            <!-- Converter Card -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200/80 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-bold mb-5 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-indigo-600 dark:text-indigo-400"></i> Conversion Settings
+                </h2>
+
+                <div class="space-y-5">
+                    <!-- Input Base Selection -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Source Base (Input)</label>
+                        <div class="grid grid-cols-5 gap-1.5" id="sourceBaseBtns">
+                            <button type="button" data-base="2" class="base-btn-src py-2 px-1 text-center font-medium text-xs rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition">Bin (2)</button>
+                            <button type="button" data-base="8" class="base-btn-src py-2 px-1 text-center font-medium text-xs rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition">Oct (8)</button>
+                            <button type="button" data-base="10" class="base-btn-src py-2 px-1 text-center font-medium text-xs rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition bg-indigo-50 dark:bg-indigo-950/55 border-indigo-600 text-indigo-600 dark:text-indigo-400">Dec (10)</button>
+                            <button type="button" data-base="16" class="base-btn-src py-2 px-1 text-center font-medium text-xs rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition">Hex (16)</button>
+                            <button type="button" data-base="tc8" class="base-btn-src py-2 px-1 text-center font-medium text-xs rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition">8-bit TC</button>
+                        </div>
+                    </div>
+
+                    <!-- Number Input Field -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <label for="numberInput" class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Number to Convert</label>
+                            <span id="validCharsHint" class="text-xs text-slate-400 font-mono">Valid: 0-9</span>
+                        </div>
+                        <div class="relative">
+                            <input type="text" id="numberInput" value="42" autocomplete="off" spellcheck="false"
+                                class="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-xl font-mono text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition uppercase">
+                            <button id="clearBtn" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                                <i class="fa-solid fa-circle-xmark"></i>
+                            </button>
+                        </div>
+                        <p id="errorMsg" class="mt-2 text-xs text-rose-500 hidden font-medium flex items-center gap-1">
+                            <i class="fa-solid fa-triangle-exclamation"></i> <span id="errorText">Invalid character for this base.</span>
+                        </p>
+                        <p id="noticeMsg" class="mt-2 text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1 hidden">
+                            <i class="fa-solid fa-circle-info"></i> <span id="noticeText">Input automatically switched to Base 10 for 8-bit Two's Complement output.</span>
+                        </p>
+                    </div>
+
+                    <!-- Target Base Selection -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Target Base (Output)</label>
+                        <div class="grid grid-cols-5 gap-1.5" id="targetBaseBtns">
+                            <button type="button" data-base="2" class="base-btn-tgt py-2 px-1 text-center font-medium text-xs rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition bg-indigo-50 dark:bg-indigo-950/55 border-indigo-600 text-indigo-600 dark:text-indigo-400">Bin (2)</button>
+                            <button type="button" data-base="8" class="base-btn-tgt py-2 px-1 text-center font-medium text-xs rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition">Oct (8)</button>
+                            <button type="button" data-base="10" class="base-btn-tgt py-2 px-1 text-center font-medium text-xs rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition">Dec (10)</button>
+                            <button type="button" data-base="16" class="base-btn-tgt py-2 px-1 text-center font-medium text-xs rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition">Hex (16)</button>
+                            <button type="button" data-base="tc8" class="base-btn-tgt py-2 px-1 text-center font-medium text-xs rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition">8-bit TC</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Samples -->
+                <div class="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">Quick Examples</span>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="setSample('101010', '2', '10')" class="px-2.5 py-1 text-xs font-mono rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 transition">Bin: 101010</button>
+                        <button onclick="setSample('255', '10', '16')" class="px-2.5 py-1 text-xs font-mono rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 transition">Dec: 255</button>
+                        <button onclick="setSample('-42', '10', 'tc8')" class="px-2.5 py-1 text-xs font-mono rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 transition">Dec: -42 → 8bit TC</button>
+                        <button onclick="setSample('11010110', 'tc8', '10')" class="px-2.5 py-1 text-xs font-mono rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 transition">8bit TC: 11010110</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Base Reference Card -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200/80 dark:border-slate-800 p-6">
+                <h3 class="font-bold text-sm mb-3 flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                    <i class="fa-solid fa-book-open text-indigo-600 dark:text-indigo-400"></i> Quick Equivalents (0 - 15)
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left font-mono">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-800 text-slate-400">
+                                <th class="py-1.5 px-2">Dec</th>
+                                <th class="py-1.5 px-2">Bin</th>
+                                <th class="py-1.5 px-2">Oct</th>
+                                <th class="py-1.5 px-2">Hex</th>
+                                <th class="py-1.5 px-2">8-bit TC</th>
+                            </tr>
+                        </thead>
+                        <tbody id="quickTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/50">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Panel: Result & Step-by-Step Procedure -->
+        <div class="lg:col-span-7 space-y-6 flex flex-col">
+            
+            <!-- Result Banner Card -->
+            <div class="bg-gradient-to-br from-indigo-900 via-slate-900 to-violet-950 text-white rounded-2xl shadow-2xl p-6 sm:p-8 relative overflow-hidden flex flex-col justify-between">
+                <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                
+                <div>
+                    <div class="flex justify-between items-center mb-4">
+                        <span id="resultBadge" class="text-xs uppercase tracking-widest font-semibold px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            Base 10 → Base 2
+                        </span>
+                        <button id="copyBtn" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-medium transition backdrop-blur">
+                            <i class="fa-regular fa-copy"></i> <span id="copyText">Copy Result</span>
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-1">
+                        <div class="text-xs text-slate-400 font-medium">Converted Result:</div>
+                        <div id="resultDisplay" class="text-3xl sm:text-4xl font-mono font-bold tracking-wider break-all text-indigo-200">
+                            101010
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-300">
+                    <div>Input Value: <span id="resSourceVal" class="font-mono text-white font-semibold">42</span><sub>(<span id="resSourceBase">10</span>)</sub></div>
+                    <div>Decimal Equivalent: <span id="resDecimalVal" class="font-mono text-white font-semibold">42</span><sub>(10)</sub></div>
+                </div>
+            </div>
+
+            <!-- Step-by-Step Manual Procedure Card -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 flex-grow">
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <div>
+                        <h2 class="text-lg font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-indigo-600 dark:text-indigo-400"></i> Step-by-Step Manual Procedure
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Mathematical breakdown of the conversion algorithm</p>
+                    </div>
+                </div>
+
+                <!-- Steps Container -->
+                <div id="stepsContainer" class="space-y-6">
+                    <!-- Dynamic Step contents populated by JS -->
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-2xl text-sm font-medium transform translate-y-24 opacity-0 transition-all duration-300 flex items-center gap-2 z-50">
+        <i class="fa-solid fa-circle-check text-emerald-400 dark:text-emerald-600"></i>
+        <span id="toastMsg">Copied to clipboard!</span>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-auto py-6 text-center text-xs text-slate-400 border-t border-slate-200 dark:border-slate-800">
+        <p>RadixMaster Pro — Built for computer science learners and developers.</p>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // State management
+        let state = {
+            sourceBase: "10",
+            targetBase: "2",
+            numberStr: "42"
+        };
+
+        // DOM Elements
+        const numberInput = document.getElementById('numberInput');
+        const clearBtn = document.getElementById('clearBtn');
+        const errorMsg = document.getElementById('errorMsg');
+        const errorText = document.getElementById('errorText');
+        const noticeMsg = document.getElementById('noticeMsg');
+        const noticeText = document.getElementById('noticeText');
+        const validCharsHint = document.getElementById('validCharsHint');
+        const resultDisplay = document.getElementById('resultDisplay');
+        const resultBadge = document.getElementById('resultBadge');
+        const resSourceVal = document.getElementById('resSourceVal');
+        const resSourceBase = document.getElementById('resSourceBase');
+        const resDecimalVal = document.getElementById('resDecimalVal');
+        const copyBtn = document.getElementById('copyBtn');
+        const toast = document.getElementById('toast');
+        const stepsContainer = document.getElementById('stepsContainer');
+        const quickTableBody = document.getElementById('quickTableBody');
+        const themeToggle = document.getElementById('themeToggle');
+
+        // Base metadata
+        const baseNames = {
+            "2": "Binary",
+            "8": "Octal",
+            "10": "Decimal",
+            "16": "Hexadecimal",
+            "tc8": "8-bit Two's Complement"
+        };
+
+        // Theme Switcher Initialization
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        themeToggle.addEventListener('click', () => {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+        });
+
+        // Event Listeners for Source Base Buttons
+        document.querySelectorAll('.base-btn-src').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const newSrc = btn.dataset.base;
+                
+                // Rule check: if target is tc8, source MUST be 10
+                if (state.targetBase === 'tc8' && newSrc !== '10') {
+                    showNotice("Input automatically switched to Base 10 because 8-bit Two's Complement output requires Decimal input.");
+                    setSourceBase('10');
+                    return;
+                }
+
+                hideNotice();
+                setSourceBase(newSrc);
+                validateAndConvert();
+            });
+        });
+
+        // Event Listeners for Target Base Buttons
+        document.querySelectorAll('.base-btn-tgt').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const newTgt = btn.dataset.base;
+
+                // Rule check: if target is tc8, source MUST be 10
+                if (newTgt === 'tc8' && state.sourceBase !== '10') {
+                    showNotice("Input automatically switched to Base 10 because 8-bit Two's Complement output requires Decimal input.");
+                    setSourceBase('10');
+                    if (state.numberStr === "" || isNaN(parseInt(state.numberStr))) {
+                        numberInput.value = "42";
+                        state.numberStr = "42";
+                    }
+                } else if (state.targetBase === 'tc8' && newTgt !== 'tc8') {
+                    hideNotice();
+                }
+
+                setTargetBase(newTgt);
+                validateAndConvert();
+            });
+        });
+
+        function setSourceBase(base) {
+            state.sourceBase = base;
+            document.querySelectorAll('.base-btn-src').forEach(b => {
+                if (b.dataset.base === base) {
+                    b.classList.add('bg-indigo-50', 'dark:bg-indigo-950/55', 'border-indigo-600', 'text-indigo-600', 'dark:text-indigo-400');
+                } else {
+                    b.classList.remove('bg-indigo-50', 'dark:bg-indigo-950/55', 'border-indigo-600', 'text-indigo-600', 'dark:text-indigo-400');
+                }
+            });
+            updateValidCharsHint();
+        }
+
+        function setTargetBase(base) {
+            state.targetBase = base;
+            document.querySelectorAll('.base-btn-tgt').forEach(b => {
+                if (b.dataset.base === base) {
+                    b.classList.add('bg-indigo-50', 'dark:bg-indigo-950/55', 'border-indigo-600', 'text-indigo-600', 'dark:text-indigo-400');
+                } else {
+                    b.classList.remove('bg-indigo-50', 'dark:bg-indigo-950/55', 'border-indigo-600', 'text-indigo-600', 'dark:text-indigo-400');
+                }
+            });
+        }
+
+        numberInput.addEventListener('input', (e) => {
+            state.numberStr = e.target.value.trim().toUpperCase();
+            validateAndConvert();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            numberInput.value = '';
+            state.numberStr = '';
+            validateAndConvert();
+            numberInput.focus();
+        });
+
+        function updateValidCharsHint() {
+            let hint = "Valid: ";
+            if (state.sourceBase === '2') hint += "0, 1";
+            else if (state.sourceBase === '8') hint += "0-7";
+            else if (state.sourceBase === '10') hint += "0-9, optional '-'";
+            else if (state.sourceBase === '16') hint += "0-9, A-F";
+            else if (state.sourceBase === 'tc8') hint += "Exactly 8 bits (0 and 1)";
+            validCharsHint.textContent = hint;
+        }
+
+        function setSample(val, srcBase, tgtBase) {
+            hideNotice();
+            if (tgtBase === 'tc8' && srcBase !== '10') {
+                srcBase = '10';
+                showNotice("Input automatically switched to Base 10 for 8-bit Two's Complement output.");
+            }
+            
+            setSourceBase(srcBase);
+            setTargetBase(tgtBase);
+            state.numberStr = val;
+            numberInput.value = val;
+            validateAndConvert();
+        }
+
+        function showNotice(text) {
+            noticeText.textContent = text;
+            noticeMsg.classList.remove('hidden');
+        }
+
+        function hideNotice() {
+            noticeMsg.classList.add('hidden');
+        }
+
+        // Validation & Conversion Router
+        function validateAndConvert() {
+            if (state.numberStr === "") {
+                showError("Please enter a number.");
+                clearResultDisplay();
+                return;
+            }
+
+            // Check validity per source base
+            if (state.sourceBase === 'tc8') {
+                if (!/^[01]{8}$/.test(state.numberStr)) {
+                    showError("8-bit Two's Complement input must be exactly 8 binary digits (0s and 1s).");
+                    clearResultDisplay();
+                    return;
+                }
+            } else if (state.sourceBase === '10') {
+                if (!/^-?[0-9]+$/.test(state.numberStr)) {
+                    showError("Invalid decimal number format.");
+                    clearResultDisplay();
+                    return;
+                }
+                let dec = parseInt(state.numberStr, 10);
+                // If output is tc8, check range [-128, 127]
+                if (state.targetBase === 'tc8' && (dec < -128 || dec > 127)) {
+                    showError("Number out of range for 8-bit Two's Complement (-128 to 127).");
+                    clearResultDisplay();
+                    return;
+                }
+            } else if (state.sourceBase === '2') {
+                if (!/^[01]+$/.test(state.numberStr)) {
+                    showError("Invalid binary digit (only 0 and 1 allowed).");
+                    clearResultDisplay();
+                    return;
+                }
+            } else if (state.sourceBase === '8') {
+                if (!/^[0-7]+$/.test(state.numberStr)) {
+                    showError("Invalid octal digit (0-7 allowed).");
+                    clearResultDisplay();
+                    return;
+                }
+            } else if (state.sourceBase === '16') {
+                if (!/^[0-9A-Fa-f]+$/.test(state.numberStr)) {
+                    showError("Invalid hexadecimal digit (0-9, A-F allowed).");
+                    clearResultDisplay();
+                    return;
+                }
+            }
+
+            hideError();
+            performConversion();
+        }
+
+        function showError(msg) {
+            errorText.textContent = msg;
+            errorMsg.classList.remove('hidden');
+            numberInput.classList.add('border-rose-500', 'dark:border-rose-500', 'focus:ring-rose-500');
+        }
+
+        function hideError() {
+            errorMsg.classList.add('hidden');
+            numberInput.classList.remove('border-rose-500', 'dark:border-rose-500', 'focus:ring-rose-500');
+        }
+
+        function clearResultDisplay() {
+            resultDisplay.textContent = "—";
+            resSourceVal.textContent = "0";
+            resSourceBase.textContent = baseNames[state.sourceBase];
+            resDecimalVal.textContent = "0";
+            resultBadge.textContent = `${baseNames[state.sourceBase]} → ${baseNames[state.targetBase]}`;
+            stepsContainer.innerHTML = `
+                <div class="text-center py-10 text-slate-400">
+                    <i class="fa-solid fa-arrow-turn-up text-2xl mb-2"></i>
+                    <p class="text-sm">Enter a valid number above to generate step-by-step procedures.</p>
+                </div>
+            `;
+        }
+
+        // Helper: Convert any standard source to Decimal integer
+        function parseToDecimal(str, base) {
+            if (base === 'tc8') {
+                // 8-bit TC parsing
+                let isNegative = str[0] === '1';
+                if (!isNegative) {
+                    return parseInt(str, 2);
+                } else {
+                    // Two's complement inversion + 1
+                    let inverted = '';
+                    for (let i = 0; i < str.length; i++) {
+                        inverted += str[i] === '0' ? '1' : '0';
+                    }
+                    let magnitude = parseInt(inverted, 2) + 1;
+                    return -magnitude;
+                }
+            } else if (base === '10') {
+                return parseInt(str, 10);
+            } else {
+                return parseInt(str, parseInt(base));
+            }
+        }
+
+        // Helper: Convert decimal to 8-bit Two's Complement binary string
+        function decimalTo8BitTC(dec) {
+            if (dec < 0) {
+                let positiveMag = Math.abs(dec);
+                let binStr = positiveMag.toString(2).padStart(8, '0');
+                // Invert bits
+                let inverted = '';
+                for (let i = 0; i < binStr.length; i++) {
+                    inverted += binStr[i] === '0' ? '1' : '0';
+                }
+                // Add 1
+                let tcVal = parseInt(inverted, 2) + 1;
+                return tcVal.toString(2).padStart(8, '0').slice(-8);
+            } else {
+                return dec.toString(2).padStart(8, '0');
+            }
+        }
+
+        // Main Calculation Engine
+        function performConversion() {
+            let decimalValue = parseToDecimal(state.numberStr, state.sourceBase);
+            let targetValue = "";
+
+            if (isNaN(decimalValue)) {
+                clearResultDisplay();
+                return;
+            }
+
+            if (state.targetBase === 'tc8') {
+                targetValue = decimalTo8BitTC(decimalValue);
+            } else if (state.targetBase === '10') {
+                targetValue = decimalValue.toString(10);
+            } else {
+                // Standard unsigned or positive representation for target bases 2, 8, 16
+                let positiveVal = decimalValue < 0 ? (decimalValue + 256) % 256 : decimalValue;
+                targetValue = positiveVal.toString(parseInt(state.targetBase)).toUpperCase();
+            }
+
+            // Update top banner
+            resultDisplay.textContent = targetValue;
+            resultBadge.textContent = `${baseNames[state.sourceBase]} → ${baseNames[state.targetBase]}`;
+            resSourceVal.textContent = state.numberStr;
+            resSourceBase.textContent = baseNames[state.sourceBase];
+            resDecimalVal.textContent = decimalValue;
+
+            // Generate detailed steps
+            generateSteps(state.numberStr, state.sourceBase, decimalValue, state.targetBase, targetValue);
+        }
+
+        // Step-by-Step generator
+        function generateSteps(inputStr, srcBase, decimalVal, tgtBase, tgtVal) {
+            let html = "";
+            let stepNum = 1;
+
+            // Check if input and output are identical
+            if (srcBase === tgtBase) {
+                html += `
+                    <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
+                        <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block mb-1">Step 1: Direct Match</span>
+                        <p class="text-sm">The source and target representations are identical (${baseNames[srcBase]}). No conversion required!</p>
+                    </div>
+                `;
+                stepsContainer.innerHTML = html;
+                return;
+            }
+
+            // PHASE 1: Convert Source to Intermediate Decimal (if source is not already decimal)
+            let intermediateDec = decimalVal;
+            if (srcBase !== '10') {
+                if (srcBase === 'tc8') {
+                    html += `
+                        <div class="p-5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 space-y-3">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center">${stepNum++}</span>
+                                <h3 class="font-bold text-sm">Step 1: Parse 8-bit Two's Complement to Decimal</h3>
+                            </div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Examine the Most Significant Bit (MSB, leftmost bit): <strong class="font-mono">${inputStr[0]}</strong></p>
+                    `;
+                    if (inputStr[0] === '1') {
+                        let inverted = '';
+                        for (let i = 0; i < inputStr.length; i++) {
+                            inverted += inputStr[i] === '0' ? '1' : '0';
+                        }
+                        let mag = parseInt(inverted, 2);
+                        html += `
+                            <ul class="text-xs space-y-1.5 list-disc pl-4 text-slate-600 dark:text-slate-300">
+                                <li>Since MSB is 1, the number is <strong class="text-rose-500">negative</strong>.</li>
+                                <li>Invert all bits (<code class="font-mono bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded">${inputStr}</code> → <code class="font-mono bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded">${inverted}</code>).</li>
+                                <li>Convert inverted bits to decimal magnitude: <code class="font-mono">${inverted}</code>₂ = ${mag}.</li>
+                                <li>Add 1 to magnitude: ${mag} + 1 = ${mag + 1}.</li>
+                                <li>Apply negative sign: <strong class="font-mono text-indigo-600 dark:text-indigo-400">-${mag + 1}</strong>.</li>
+                            </ul>
+                        `;
+                    } else {
+                        html += `
+                            <ul class="text-xs space-y-1.5 list-disc pl-4 text-slate-600 dark:text-slate-300">
+                                <li>Since MSB is 0, the number is <strong class="text-emerald-500">positive</strong>.</li>
+                                <li>Evaluate directly as standard binary: <code class="font-mono">${inputStr}</code>₂ = <strong class="font-mono text-indigo-600 dark:text-indigo-400">${intermediateDec}</strong>.</li>
+                            </ul>
+                        `;
+                    }
+                    html += `</div>`;
+                } else {
+                    // Standard base (2, 8, 16) to decimal via positional expansion
+                    let baseNum = parseInt(srcBase);
+                    html += `
+                        <div class="p-5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 space-y-3">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center">${stepNum++}</span>
+                                <h3 class="font-bold text-sm">Step ${stepNum - 1}: Convert Base ${baseNum} to Decimal (Positional Expansion)</h3>
+                            </div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Multiply each digit by ${baseNum} raised to its position power from right to left:</p>
+                            
+                            <div class="overflow-x-auto mt-2">
+                                <table class="w-full text-xs font-mono text-left">
+                                    <thead class="border-b border-slate-200 dark:border-slate-700 text-slate-400">
+                                        <tr>
+                                            <th class="py-1.5 px-2">Digit</th>
+                                            <th class="py-1.5 px-2">Position Power</th>
+                                            <th class="py-1.5 px-2">Product</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-200/50 dark:divide-slate-700/50">
+                    `;
+
+                    let len = inputStr.length;
+                    let sumParts = [];
+                    for (let i = 0; i < len; i++) {
+                        let char = inputStr[len - 1 - i];
+                        let digitVal = parseInt(char, baseNum);
+                        let powerVal = Math.pow(baseNum, i);
+                        let product = digitVal * powerVal;
+                        sumParts.push(product);
+
+                        html += `
+                            <tr>
+                                <td class="py-1.5 px-2 font-bold text-indigo-600 dark:text-indigo-400">${char}</td>
+                                <td class="py-1.5 px-2">${baseNum}<sup>${i}</sup> (${powerVal})</td>
+                                <td class="py-1.5 px-2">${digitVal} × ${powerVal} = ${product}</td>
+                            </tr>
+                        `;
+                    }
+
+                    html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="text-xs pt-2 font-semibold text-indigo-600 dark:text-indigo-400">
+                                Intermediate Decimal Value = ${intermediateDec}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            // PHASE 2: Convert Intermediate Decimal to Target Base (if target is not decimal)
+            if (tgtBase !== '10') {
+                if (tgtBase === 'tc8') {
+                    html += `
+                        <div class="p-5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 space-y-3">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center">${stepNum++}</span>
+                                <h3 class="font-bold text-sm">Step ${stepNum - 1}: Convert Decimal (${intermediateDec}) to 8-bit Two's Complement</h3>
+                            </div>
+                    `;
+
+                    if (intermediateDec < 0) {
+                        let positiveMag = Math.abs(intermediateDec);
+                        let binStr = positiveMag.toString(2).padStart(8, '0');
+                        let inverted = '';
+                        for (let i = 0; i < binStr.length; i++) {
+                            inverted += binStr[i] === '0' ? '1' : '0';
+                        }
+                        let finalTcVal = parseInt(inverted, 2) + 1;
+                        let finalStr = finalTcVal.toString(2).padStart(8, '0').slice(-8);
+
+                        html += `
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Since the decimal number is negative (${intermediateDec}):</p>
+                            <ul class="text-xs space-y-1.5 list-disc pl-4 text-slate-600 dark:text-slate-300">
+                                <li>Take absolute magnitude: |${intermediateDec}| = ${positiveMag}.</li>
+                                <li>Convert magnitude to 8-bit binary: <code class="font-mono">${binStr}</code>.</li>
+                                <li>Invert all bits (One's Complement): <code class="font-mono">${inverted}</code>.</li>
+                                <li>Add 1 to obtain Two's Complement: <code class="font-mono text-indigo-600 dark:text-indigo-400">${finalStr}</code>.</li>
+                            </ul>
+                        `;
+                    } else {
+                        let binStr = intermediateDec.toString(2).padStart(8, '0');
+                        html += `
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Since the decimal number is positive or zero (${intermediateDec}):</p>
+                            <ul class="text-xs space-y-1.5 list-disc pl-4 text-slate-600 dark:text-slate-300">
+                                <li>Pad binary representation to 8 bits: <code class="font-mono text-indigo-600 dark:text-indigo-400">${binStr}</code>.</li>
+                            </ul>
+                        `;
+                    }
+                    html += `</div>`;
+                } else {
+                    // Standard target bases 2, 8, 16 via successive division
+                    let tBaseNum = parseInt(tgtBase);
+                    html += `
+                        <div class="p-5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 space-y-3">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center">${stepNum++}</span>
+                                <h3 class="font-bold text-sm">Step ${stepNum - 1}: Convert Decimal (${intermediateDec}) to Base ${tBaseNum}</h3>
+                            </div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Divide successively by ${tBaseNum} recording quotients and remainders:</p>
+                            
+                            <div class="overflow-x-auto mt-2">
+                                <table class="w-full text-xs font-mono text-left">
+                                    <thead class="border-b border-slate-200 dark:border-slate-700 text-slate-400">
+                                        <tr>
+                                            <th class="py-1.5 px-2">Division</th>
+                                            <th class="py-1.5 px-2">Quotient</th>
+                                            <th class="py-1.5 px-2">Remainder</th>
+                                            <th class="py-1.5 px-2">Digit</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-200/50 dark:divide-slate-700/50">
+                    `;
+
+                    let tempVal = intermediateDec < 0 ? (intermediateDec + 256) % 256 : intermediateDec;
+                    let divisionRows = [];
+                    if (tempVal === 0) {
+                        divisionRows.push({ div: `0 ÷ ${tBaseNum}`, q: 0, rem: 0, char: '0' });
+                    } else {
+                        while (tempVal > 0) {
+                            let q = Math.floor(tempVal / tBaseNum);
+                            let rem = tempVal % tBaseNum;
+                            let remChar = rem.toString(16).toUpperCase();
+                            divisionRows.push({ div: `${tempVal} ÷ ${tBaseNum}`, q: q, rem: rem, char: remChar });
+                            tempVal = q;
+                        }
+                    }
+
+                    divisionRows.forEach((row, idx) => {
+                        html += `
+                            <tr class="${idx === divisionRows.length - 1 ? 'bg-indigo-50/50 dark:bg-indigo-950/30 font-bold' : ''}">
+                                <td class="py-1.5 px-2">${row.div}</td>
+                                <td class="py-1.5 px-2">${row.q}</td>
+                                <td class="py-1.5 px-2">${row.rem}</td>
+                                <td class="py-1.5 px-2 text-indigo-600 dark:text-indigo-400">${row.char}</td>
+                            </tr>
+                        `;
+                    });
+
+                    html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="text-xs pt-2 font-semibold text-slate-700 dark:text-slate-300">
+                                Result in Base ${tBaseNum}: <span class="font-mono text-indigo-600 dark:text-indigo-400 text-sm">${tgtVal}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            } else {
+                // Target is Decimal and source was already processed
+                if (srcBase === 'tc8' || srcBase !== '10') {
+                    html += `
+                        <div class="p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                            Final Decimal Conversion Result: ${intermediateDec}
+                        </div>
+                    `;
+                }
+            }
+
+            stepsContainer.innerHTML = html;
+        }
+
+        // Quick Reference Table Population
+        function populateQuickTable() {
+            let rows = "";
+            for (let i = 0; i <= 15; i++) {
+                let tc8 = i.toString(2).padStart(8, '0');
+                rows += `
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                        <td class="py-1.5 px-2">${i}</td>
+                        <td class="py-1.5 px-2">${i.toString(2)}</td>
+                        <td class="py-1.5 px-2">${i.toString(8)}</td>
+                        <td class="py-1.5 px-2">${i.toString(16).toUpperCase()}</td>
+                        <td class="py-1.5 px-2">${tc8}</td>
+                    </tr>
+                `;
+            }
+            quickTableBody.innerHTML = rows;
+        }
+
+        // Copy Result Handler (Fallback compatible)
+        copyBtn.addEventListener('click', () => {
+            const textToCopy = resultDisplay.textContent;
+            if (textToCopy === "—" || !textToCopy) return;
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    showToast();
+                }).catch(() => {
+                    fallbackCopy(textToCopy);
+                });
+            } else {
+                fallbackCopy(textToCopy);
+            }
+        });
+
+        function fallbackCopy(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) showToast();
+            } catch (err) {
+                console.error('Fallback copy failed', err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function showToast() {
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 2500);
+        }
+
+        // Initial setup on load
+        window.addEventListener('DOMContentLoaded', () => {
+            populateQuickTable();
+            updateValidCharsHint();
+            validateAndConvert();
+        });
+    </script>
+</body>
+</html>
